@@ -28,7 +28,7 @@ using namespace std;
 #define cpuVersion 0
 #define gpuVersion 0
 #define gpuKDTree 0
-#define singlGMM 1
+#define singleGMM 1
 
 glm::vec3 rotation(-0.5f, 0.5f, 0.3f);
 glm::vec3 translate(0.1f, 0.1f, 0.2f);

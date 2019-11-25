@@ -20,3 +20,7 @@ namespace scanMatchingICP {
     void endSimulation();
     void unitTest();
 }
+
+namespace scanRegistration {
+	void runSimulation(vector<glm::vec3>& source, vector<glm::vec3>& target);
+}

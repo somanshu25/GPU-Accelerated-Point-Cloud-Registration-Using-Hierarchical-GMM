@@ -10,7 +10,7 @@
 #include <chrono>
 #include <ctime>
 #include <ratio>
-#include "gmm_kernels.h"
+#include "kernel.h"
 #include "gmm.h"
 
 #define blockSize 128
@@ -21,6 +21,9 @@ glm::mat3 *dev_covar;
 float *dev_logPriors;
 float *dev_logProb;
 
+int components = 800;
+int sourceSize;
+int targetSize;
 //#define checkCUDAErrorWithLine(msg) checkCUDAError(msg, __LINE__)
 
 /**
@@ -101,6 +104,7 @@ _global__ void maximizationStep(glm::vec2 *data, glm::vec2 *mean, glm::mat2 *cov
 
 }
 */
+
 void GMM::solve(vector<glm::vec3> points, glm::vec3 *mu, glm::mat3 *covar, int iterations, int N) {
 
 	float *logPriors = new float[components];
@@ -132,11 +136,11 @@ void GMM::solve(vector<glm::vec3> points, glm::vec3 *mu, glm::mat3 *covar, int i
 	cudaMemcpy(dev_points, &points[0], N * sizeof(glm::vec3), cudaMemcpyHostToDevice);
 	checkCUDAErrorWithLine("cudaMemCpy dev_points failed!");
 
-	cudaMemcpy(dev_mu, &mu[0], N * sizeof(glm::vec3), cudaMemcpyHostToDevice);
-	checkCUDAErrorWithLine("cudaMemCpy dev_points failed!");
+	cudaMemcpy(dev_mu, &mu[0], components * sizeof(glm::vec3), cudaMemcpyHostToDevice);
+	checkCUDAErrorWithLine("cudaMemCpy dev_mu failed!");
 
-	cudaMemcpy(dev_covar, &covar[0], N * sizeof(glm::vec3), cudaMemcpyHostToDevice);
-	checkCUDAErrorWithLine("cudaMemCpy dev_points failed!");
+	cudaMemcpy(dev_covar, &covar[0], components * sizeof(glm::vec3), cudaMemcpyHostToDevice);
+	checkCUDAErrorWithLine("cudaMemCpy dev_covar failed!");
 
 	for (int i = 0; i < iterations; i++) {
 		expectationStep << <fullBlocksPerGrid, blockSize >> > (dev_points, dev_mu, dev_covar, dev_logPriors, dev_logProb, N, components);
@@ -169,16 +173,62 @@ void GMM::solve(glm::vec2 *points, glm::vec2 *mu, glm::mat2 *covar, int iteratio
 	}
 }
 */
+void scanRegistration::initSimulation(vector<glm::vec3>& source, vector<glm::vec3>& target) {
+	
+	int numObjects = source.size() + target.size();
+	sourceSize = source.size();
+	targetSize = target.size();
+
+	dim3 fullBlocksPerGrid((numObjects + blockSize - 1) / blockSize);
+
+	cudaMalloc((void**)&dev_points, numObjects * sizeof(glm::vec3));
+	checkCUDAErrorWithLine("cudaMalloc dev_points failed!");
+
+	cudaMalloc((void**)&dev_mu, components * sizeof(glm::vec3));
+	checkCUDAErrorWithLine("cudaMalloc dev_mu failed!");
+
+	cudaMalloc((void**)&dev_covar, components * sizeof(glm::mat3));
+	checkCUDAErrorWithLine("cudaMalloc dev_covar failed!");
+
+	cudaMalloc((void**)&dev_logPriors, components * sizeof(float));
+	checkCUDAErrorWithLine("cudaMalloc dev_logPriors failed!");
+
+	cudaMalloc((void**)&dev_logProb, numObjects * components * sizeof(float));
+	checkCUDAErrorWithLine("cudaMalloc dev_logPriors failed!");
+
+	cudaMalloc((void**)&dev_pos, numObjects * sizeof(glm::vec3));
+	checkCUDAErrorWithLine("cudaMalloc dev_pos failed!");
+
+	cudaMalloc((void**)&dev_vel1, numObjects * sizeof(glm::vec3));
+	checkCUDAErrorWithLine("cudaMalloc dev_vel1 failed!");
+
+
+
+	cudaMemcpy(dev_points, &points[0], N * sizeof(glm::vec3), cudaMemcpyHostToDevice);
+	checkCUDAErrorWithLine("cudaMemCpy dev_points failed!");
+
+	cudaMemcpy(dev_mu, &mu[0], components * sizeof(glm::vec3), cudaMemcpyHostToDevice);
+	checkCUDAErrorWithLine("cudaMemCpy dev_mu failed!");
+
+	cudaMemcpy(dev_covar, &covar[0], components * sizeof(glm::vec3), cudaMemcpyHostToDevice);
+	checkCUDAErrorWithLine("cudaMemCpy dev_covar failed!");
+}
 void scanRegistration::runSimulation(vector<glm::vec3>& source, vector<glm::vec3>& target) {
 	int numObjects = source.size() + target.size();
 	int sourceSize = source.size();
 	int targetSize = target.size();
 
-	GMM g1(100);
+	int components = 100;
+	GMM g1(components);
 
-	glm::vec3 *mu = new glm::vec3[100];
-	glm::mat3 *covar = new glm::mat3[100];
+	glm::vec3 *mu = new glm::vec3[components];
+	glm::mat3 *covar = new glm::mat3[components];
 
+	glm::mat3 m3(1.0f);
+	for (int i = 0; i < components; i++) {
+		mu[i] = source[rand() % sourceSize];
+		covar[i] = m3;
+	}
 	g1.solve(source, mu, covar, 50, sourceSize);
 
 	//glm::vec3 *mu2 = new glm::vec3[100];
