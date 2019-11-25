@@ -1,4 +1,5 @@
 #define GLM_FORCE_CUDA
+
 #include <stdio.h>
 #include <cuda.h>
 #include <cmath>
@@ -17,6 +18,23 @@
 //#include <glm/gtx/string_cast.hpp>
 using namespace std;
 
+//#define checkCUDAErrorWithLine(msg) checkCUDAError(msg, __LINE__)
+
+/**
+* Check for CUDA errors; print and exit if there was a problem.
+*/
+
+//void checkCUDAErrorWithLine(const char *msg, int line = -1) {
+//	cudaError_t err = cudaGetLastError();
+//	if (cudaSuccess != err) {
+//		if (line >= 0) {
+//			fprintf(stderr, "Line %d: ", line);
+//		}
+//		fprintf(stderr, "Cuda error: %s: %s.\n", msg, cudaGetErrorString(err));
+//		exit(EXIT_FAILURE);
+//	}
+//}
+
 // LOOK-2.1 potentially useful for doing grid-based neighbor search
 #ifndef imax
 #define imax( a, b ) ( ((a) > (b)) ? (a) : (b) )
@@ -25,23 +43,6 @@ using namespace std;
 #ifndef imin
 #define imin( a, b ) ( ((a) < (b)) ? (a) : (b) )
 #endif
-
-#define checkCUDAErrorWithLine(msg) checkCUDAError(msg, __LINE__)
-
-/**
-* Check for CUDA errors; print and exit if there was a problem.
-*/
-void checkCUDAError(const char *msg, int line = -1) {
-  cudaError_t err = cudaGetLastError();
-  if (cudaSuccess != err) {
-    if (line >= 0) {
-      fprintf(stderr, "Line %d: ", line);
-    }
-    fprintf(stderr, "Cuda error: %s: %s.\n", msg, cudaGetErrorString(err));
-    exit(EXIT_FAILURE);
-  }
-}
-
 
 /*****************
 * Configuration *
@@ -61,7 +62,6 @@ int numObjects;
 int sourceSize;
 int targetSize;
 int kdTreeLength;
-dim3 threadsPerBlock(blockSize);
 
 // LOOK-1.2 - These buffers are here to hold all your boid information.
 // These get allocated for you in Boids::initSimulation.
@@ -102,6 +102,7 @@ glm::vec3 gridMinimum;
 /******************
 * initSimulation *
 ******************/
+
 
 __host__ __device__ unsigned int hash(unsigned int a) {
   a = (a + 0x7ed55d16) + (a << 12);
@@ -827,3 +828,4 @@ void scanMatchingICP::unitTest() {
   checkCUDAErrorWithLine("cudaFree failed!");
   return;
 }
+

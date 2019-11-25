@@ -1,55 +1,33 @@
 #pragma once
 
-#include <glm/glm.hpp>
-#include <glm/vec3.hpp>
-#include <vector>
+#include <stdio.h>
 #include <cuda.h>
-#include <cstdio>
-#include<cuda.h>
+#include <cmath>
+#include <glm/glm.hpp>
+#include "utilities.h"
+#include <thrust/reduce.h>
+#include <glm/vec3.hpp>
+#include <chrono>
+#include <ctime>
+#include <ratio>
 #include "gmm_kernels.h"
 #include "gmm.h"
-#include "utilities.h"
 
-#define checkCUDAErrorWithLine(msg) checkCUDAError(msg, __LINE__)
-
-/**
-* Check for CUDA errors; print and exit if there was a problem.
-*/
-void checkCUDAError(const char *msg, int line = -1) {
-	cudaError_t err = cudaGetLastError();
-	if (cudaSuccess != err) {
-		if (line >= 0) {
-			fprintf(stderr, "Line %d: ", line);
-		}
-		fprintf(stderr, "Cuda error: %s: %s.\n", msg, cudaGetErrorString(err));
-		exit(EXIT_FAILURE);
-	}
-}
-
-/*****************
-* Configuration *
-*****************/
-
-/*! Block size used for CUDA kernel launch. */
 #define blockSize 128
 
-/*! Size of the starting area in simulation space. */
-#define scene_scale 0.1f
-
-
-/***********************************************
-* Kernel state (pointers are device pointers) *
-***********************************************/
-
-int numObjects;
-dim3 threadsPerBlock(blockSize);
-
-// Buffers allocated for the logic
 glm::vec3 *dev_points;
 glm::vec3 *dev_mu;
 glm::mat3 *dev_covar;
 float *dev_logPriors;
 float *dev_logProb;
+
+//#define checkCUDAErrorWithLine(msg) checkCUDAError(msg, __LINE__)
+
+/**
+* Check for CUDA errors; print and exit if there was a problem.
+*/
+
+
 
 __device__ float calculateMahalanobisDistance(glm::vec3 a, glm::vec3 b, glm::mat3 covar) {
 	glm::mat3 covarInv = glm::inverse(covar);
@@ -77,7 +55,7 @@ __device__ float calculateProbability(glm::vec2 mean, glm::mat2 covar, glm::vec2
 	return value;
 }
 
-__global__ void expectationStep(glm::vec3 *data,glm::vec3 *mean, glm::mat3 *covar, float *priors, float *prob, int N, int components) {
+__global__ void expectationStep(glm::vec3 *data, glm::vec3 *mean, glm::mat3 *covar, float *priors, float *prob, int N, int components) {
 	int index = (blockIdx.x * blockDim.x) + threadIdx.x;
 	if (index >= N)
 		return;
@@ -96,10 +74,10 @@ __global__ void expectationStep(glm::vec3 *data,glm::vec3 *mean, glm::mat3 *cova
 
 /*
 __global__ void maximizationStep(glm::vec3 *data, glm::vec3 *mean, glm::mat3 *covar, float *priors, float *prob, int N) {
-	
+
 }
 */
-__global__ void expectationStep(glm::vec2 *data, glm::vec2 *mean, glm::mat2 *covar, float *priors, float *prob, int N,int components) {
+__global__ void expectationStep(glm::vec2 *data, glm::vec2 *mean, glm::mat2 *covar, float *priors, float *prob, int N, int components) {
 	int index = (blockIdx.x * blockDim.x) + threadIdx.x;
 	if (index >= N)
 		return;
@@ -119,7 +97,7 @@ __global__ void expectationStep(glm::vec2 *data, glm::vec2 *mean, glm::mat2 *cov
 /*
 _global__ void maximizationStep(glm::vec2 *data, glm::vec2 *mean, glm::mat2 *covar, float *priors, float *logProb, int N) {
 
-	
+
 
 }
 */
@@ -161,7 +139,7 @@ void GMM::solve(vector<glm::vec3> points, glm::vec3 *mu, glm::mat3 *covar, int i
 	checkCUDAErrorWithLine("cudaMemCpy dev_points failed!");
 
 	for (int i = 0; i < iterations; i++) {
-		expectationStep <<<fullBlocksPerGrid, blockSize >>> (dev_points, dev_mu, dev_covar, dev_logPriors, dev_logProb, N, components);
+		expectationStep << <fullBlocksPerGrid, blockSize >> > (dev_points, dev_mu, dev_covar, dev_logPriors, dev_logProb, N, components);
 		checkCUDAErrorWithLine("Kernel expectation Step failed!");
 
 		//maximizationStep<<<fullBlocksPerGrid, blockSize >>>(points, mu, covar, logPriors, logProb, N, components);
@@ -192,12 +170,12 @@ void GMM::solve(glm::vec2 *points, glm::vec2 *mu, glm::mat2 *covar, int iteratio
 }
 */
 void scanRegistration::runSimulation(vector<glm::vec3>& source, vector<glm::vec3>& target) {
-	numObjects = source.size() + target.size();
+	int numObjects = source.size() + target.size();
 	int sourceSize = source.size();
 	int targetSize = target.size();
 
 	GMM g1(100);
-	
+
 	glm::vec3 *mu = new glm::vec3[100];
 	glm::mat3 *covar = new glm::mat3[100];
 

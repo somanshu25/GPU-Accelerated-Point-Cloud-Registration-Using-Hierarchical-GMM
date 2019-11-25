@@ -10,6 +10,7 @@
 #include <vector>
 using namespace std;
 
+
 namespace scanMatchingICP {
     void initSimulation(vector<glm::vec3>& source, vector<glm::vec3>& target);
     void cpuNaive(vector<glm::vec3>& source, vector<glm::vec3>& target,int iter);

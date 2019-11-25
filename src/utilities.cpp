@@ -13,6 +13,17 @@
 #include <glm/gtc/matrix_inverse.hpp>
 #include "utilities.h"
 
+void checkCUDAErrorWithLine(const char *msg, int line) {
+	cudaError_t err = cudaGetLastError();
+	if (cudaSuccess != err) {
+		if (line >= 0) {
+			fprintf(stderr, "Line %d: ", line);
+		}
+		fprintf(stderr, "Cuda error: %s: %s.\n", msg, cudaGetErrorString(err));
+		exit(EXIT_FAILURE);
+	}
+}
+
 struct csv_reader : std::ctype<char> {
 	csv_reader() : std::ctype<char>(get_table()) {}
 	static std::ctype_base::mask const* get_table() {
