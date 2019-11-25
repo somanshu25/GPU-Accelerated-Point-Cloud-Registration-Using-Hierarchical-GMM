@@ -11,10 +11,12 @@
 #include <cuda_gl_interop.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
-#include "utilities.h"
-#include "glslUtility.hpp"
-#include "kernel.h"
-#include "kdtree.h"
+#include "common/utilities.h"
+#include "common/glslUtility.hpp"
+#include "icp/icp_kernel.h"
+#include "icp/kdtree.h"
+#include "common/pointdata.h"
+#include "common/testing_helpers.hpp"
 
 //====================================
 // GL Stuff

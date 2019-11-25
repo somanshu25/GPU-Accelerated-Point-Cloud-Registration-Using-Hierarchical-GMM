@@ -4,9 +4,9 @@
 #include <cuda.h>
 #include <cmath>
 #include <glm/glm.hpp>
-#include "utilities.h"
-#include "kernel.h"
-#include "svd3.h"
+#include "../common/utilities.h"
+#include "icp_kernel.h"
+#include "../common/svd3.h"
 #include <thrust/reduce.h>
 #include "kdtree.h"
 #include <glm/vec3.hpp>

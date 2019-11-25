@@ -4,13 +4,13 @@
 #include <cuda.h>
 #include <cmath>
 #include <glm/glm.hpp>
-#include "utilities.h"
+#include "../common/utilities.h"
 #include <thrust/reduce.h>
 #include <glm/vec3.hpp>
 #include <chrono>
 #include <ctime>
 #include <ratio>
-#include "kernel.h"
+#include "gmm_kernels.h"
 #include "gmm.h"
 
 #define blockSize 128
@@ -22,8 +22,8 @@ float *dev_logPriors;
 float *dev_logProb;
 
 int components = 800;
-int sourceSize;
-int targetSize;
+//int sourceSize;
+//int targetSize;
 //#define checkCUDAErrorWithLine(msg) checkCUDAError(msg, __LINE__)
 
 /**
@@ -173,6 +173,7 @@ void GMM::solve(glm::vec2 *points, glm::vec2 *mu, glm::mat2 *covar, int iteratio
 	}
 }
 */
+/*
 void scanRegistration::initSimulation(vector<glm::vec3>& source, vector<glm::vec3>& target) {
 	
 	int numObjects = source.size() + target.size();
@@ -213,6 +214,7 @@ void scanRegistration::initSimulation(vector<glm::vec3>& source, vector<glm::vec
 	cudaMemcpy(dev_covar, &covar[0], components * sizeof(glm::vec3), cudaMemcpyHostToDevice);
 	checkCUDAErrorWithLine("cudaMemCpy dev_covar failed!");
 }
+*/
 void scanRegistration::runSimulation(vector<glm::vec3>& source, vector<glm::vec3>& target) {
 	int numObjects = source.size() + target.size();
 	int sourceSize = source.size();

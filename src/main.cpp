@@ -7,11 +7,9 @@
  */
 
 #include <cstdio>
-#include "testing_helpers.hpp"
 #include <iostream>
 #include <fstream>
 #include <string.h> 
-#include "pointdata.h"
 //#include "svd3.h"
 //#include "svd3_cuda.h"
 #include "main.hpp"
@@ -20,7 +18,6 @@
 #include <vector>
 #include <sstream>
 #include "glm/glm.hpp"
-#include "utilities.h"
 
 using namespace std;
 
@@ -108,7 +105,7 @@ void readData2(string filename, vector<glm::vec3>& points) {
 }
 int main(int argc, char* argv[]) {
 	
-	readData("../data-set/bun000.ply", sourcePoints, targetPoints);
+	readData("../data/bun000.ply", sourcePoints, targetPoints);
 	//readData2(argv[1], sourcePoints);
 	//readData2(argv[2], targetPoints);
 

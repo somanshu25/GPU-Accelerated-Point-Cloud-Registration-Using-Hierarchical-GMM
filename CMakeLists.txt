@@ -64,26 +64,26 @@ include_directories(${GLM_INCLUDE_DIRS})
 
 set(headers
     src/main.hpp
-    src/pointdata.h
-    src/testing_helpers.hpp
-    src/glslUtility.hpp
-    src/utilities.h
-    src/svd3.h
-    src/kernel.h
-    src/kdtree.h
-    src/gmm.h
-    src/gmm_kernels.h
+    src/common/pointdata.h
+    src/common/testing_helpers.hpp
+    src/common/glslUtility.hpp
+    src/common/utilities.h
+    src/common/svd3.h
+    src/icp/icp_kernel.h
+    src/icp/kdtree.h
+    src/gmm_fit/gmm.h
+    src/gmm_fit/gmm_kernels.h
     )
 
 set(sources
     src/main.cpp
-    src/pointdata.cc
-    src/glslUtility.cpp
-    src/utilities.cpp
-    src/kernel.cu
-    src/kdtree.cc
-    src/gmm.cpp
-    src/gmm_kernels.cu
+    src/common/pointdata.cpp
+    src/common/glslUtility.cpp
+    src/common/utilities.cpp
+    src/icp/icp_kernel.cu
+    src/icp/kdtree.cc
+    src/gmm_fit/gmm.cpp
+    src/gmm_fit/gmm_kernels.cu
     )
 
 list(SORT headers)
