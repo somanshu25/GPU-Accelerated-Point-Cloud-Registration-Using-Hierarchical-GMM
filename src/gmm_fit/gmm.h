@@ -16,6 +16,6 @@ class GMM {
 			components = N;
 		}
 
-		void solve(vector<glm::vec3> points,glm::vec3 *mean, glm::mat3 *covar, int iterations,int N);
+		void solve(vector<glm::vec3> points,glm::vec3 *mean, float *weights, int iterations,int N);
 		//void solve(glm::vec2 *points,glm::vec2 *mean, glm::mat2 *covar, int iterations,int N);
 };

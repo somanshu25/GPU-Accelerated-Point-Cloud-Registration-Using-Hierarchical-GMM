@@ -14,6 +14,7 @@
 #include "common/utilities.h"
 #include "common/glslUtility.hpp"
 #include "icp/icp_kernel.h"
+#include "gmm_fit/gmm_kernels.h"
 #include "icp/kdtree.h"
 #include "common/pointdata.h"
 #include "common/testing_helpers.hpp"

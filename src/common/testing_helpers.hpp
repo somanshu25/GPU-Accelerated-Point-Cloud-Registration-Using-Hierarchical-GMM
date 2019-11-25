@@ -69,6 +69,7 @@ void printArray(int n, int *a, bool abridged = false) {
     printf("]\n");
 }
 
+
 template<typename T>
 void printElapsedTime(T time, std::string note = "")
 {

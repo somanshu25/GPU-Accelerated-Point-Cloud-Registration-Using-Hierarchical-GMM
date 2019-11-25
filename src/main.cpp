@@ -21,7 +21,7 @@
 
 using namespace std;
 
-#define VISUALIZE 1
+#define VISUALIZE 0
 #define cpuVersion 0
 #define gpuVersion 0
 #define gpuKDTree 0
@@ -116,16 +116,17 @@ int main(int argc, char* argv[]) {
 
 	N_FOR_VIS = sourcePoints.size() + targetPoints.size();
 	//N_FOR_VIS = sourcePoints.size();
-	for (int i = 0; i < 4; i ++)
-		for (int j = 0; j < 4 ; j++)
-			printf("The value of matrix[%d][%d] is: %0.4f \n",j,i,transformed[j][i]);
 
 	printf("Size of source pointcloud: %d\n", sourcePoints.size());
 	printf("Size of target pointcloud: %d\n", targetPoints.size());
 
 	if (init(argc, argv)) {
 		mainLoop();
-		scanMatchingICP::endSimulation();
+		#if singleGMM
+			scanRegistration::endSimulation();
+		#else	
+			scanMatchingICP::endSimulation();
+		#endif
 		return 0;
 	}
 	else {
@@ -207,7 +208,11 @@ bool init(int argc, char **argv) {
 	cudaGLRegisterBufferObject(boidVBO_velocities);
 
 	// Initialize N-body simulation
-	scanMatchingICP::initSimulation(sourcePoints, targetPoints);
+	#if singleGMM
+		scanRegistration::initSimulation(sourcePoints, targetPoints, 800);
+	#else
+		scanMatchingICP::initSimulation(sourcePoints, targetPoints);
+	#endif
 
 	updateCamera();
 
@@ -306,7 +311,11 @@ void runCUDA(int iter) {
 		
 
 	#if VISUALIZE
-		scanMatchingICP::copyBoidsToVBO(dptrVertPositions, dptrVertVelocities);
+		#if singleGMM
+			scanRegistration::copyBoidsToVBO(dptrVertPositions, dptrVertVelocities);
+		#else
+			scanMatchingICP::copyBoidsToVBO(dptrVertPositions, dptrVertVelocities);
+		#endif	   
 	#endif
 
 	// unmap buffer object
@@ -335,8 +344,8 @@ void mainLoop() {
 
 		runCUDA(iter);
 
-		//if (iter == 2)
-		//	break;
+		if (iter == 1)
+			break;
 
 		std::ostringstream ss;
 		ss << "[";
