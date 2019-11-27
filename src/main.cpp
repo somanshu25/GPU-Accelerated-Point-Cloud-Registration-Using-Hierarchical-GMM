@@ -103,7 +103,7 @@ void readData2(string filename, vector<glm::vec3>& points) {
 		}
 	}
 }
-int main2(int argc, char* argv[]) {
+int main(int argc, char* argv[]) {
 	
 	readData("../data/bun000.ply", sourcePoints, targetPoints);
 	//readData2(argv[1], sourcePoints);

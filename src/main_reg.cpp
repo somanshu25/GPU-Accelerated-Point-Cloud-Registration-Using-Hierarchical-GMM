@@ -164,7 +164,7 @@ void readPointCloud(const std::string& filename, glm::vec3 **points, int* n, boo
 std::string deviceName2;
 GLFWwindow *window2;
 
-int main(int argc, char* argv[]) {
+int main2(int argc, char* argv[]) {
 	std::string src_filename = "../data/bun000.ply";
 	std::string target_filename = "../data/bun045.ply";
 	//std::string src_filename = "../data/dragon_stand/dragonStandRight_0.ply";
