@@ -13,6 +13,7 @@
 #include "gmm_kernels.h"
 #include "gmm.h"
 #include <thrust/execution_policy.h>
+#include <thrust/extrema.h>
 
 /*! Block size used for CUDA kernel launch. */
 #define blockSize 128
@@ -92,14 +93,15 @@ __global__ void kernCopyVelocitiesToVBO2(int N, glm::vec3 *vel, float *vbo, floa
 }
 
 
-__device__ float calculateMahalanobisDistance(glm::vec3 a, glm::vec3 b, glm::mat3 covar) {
+__device__ float calculateMahalanobisDistance(glm::vec3 a, glm::vec3 b, glm::mat3 covar, int index) {
 	glm::mat3 covarInv = glm::inverse(covar);
-		
-	glm::vec3 temp = (a - b) * covarInv;
-	float distance = glm::dot(a - b, temp);
 	//if (index == 400) {
-	//	printf("\n Distance is: %0.5f", distance);
+	//	for (int i = 0; i < 3; i++)
+	//		printf("\n %0.5f , %0.5f, %0.5f \n", covarInv[i][0], covarInv[i][1], covarInv[i][2]);
 	//}
+	glm::vec3 diff = a - b;
+	glm::vec3 temp = covarInv * diff;
+	float distance = diff.x * temp.x + diff.y * temp.y + diff.z * temp.z;
 	return distance;
 }
 
@@ -110,30 +112,37 @@ __device__ float calculateMahalanobisDistance(glm::vec2 a, glm::vec2 b, glm::mat
 	return distance;
 }
 
-__device__ float calculateProbability(glm::vec3 mean, glm::mat3 covar, glm::vec3 point) {
+__device__ float calculateProbability(glm::vec3 mean, glm::mat3 covar, glm::vec3 point, int index) {
 	int dim = 3;
-	float value = -0.5*(dim*log(TWO_PI) + log(glm::determinant(covar)) + calculateMahalanobisDistance(point, mean, covar));
+	float value = -0.5*(dim*log(TWO_PI) + log(glm::determinant(covar)) + calculateMahalanobisDistance(point, mean, covar, index));
 	return value;
 }
-
-__device__ float calculateProbability(glm::vec2 mean, glm::mat2 covar, glm::vec2 point) {
+/*
+__device__ float calculateProbability(glm::vec2 mean, glm::mat2 covar, glm::vec2 point,int index) {
 	int dim = 2;
-	float value = -0.5*(dim*log(TWO_PI) + log(glm::determinant(covar)) + calculateMahalanobisDistance(point, mean, covar));
+	float value = -0.5*(dim*log(TWO_PI) + log(glm::determinant(covar)) + calculateMahalanobisDistance(point, mean, covar,index));
 	return value;
 }
-
+*/
 __global__ void expectationStep(glm::vec3 *data, glm::vec3 *mean, glm::mat3 *covar, float *logPriors, float *prob, int N, int components) {
 	int index = (blockIdx.x * blockDim.x) + threadIdx.x;
 	if (index >= N)
 		return;
 
-	float sum = 0;
+	float max_argument = -INFINITY;
 	for (int i = 0; i < components; i++) {
-		prob[index*components + i] = logPriors[i] + calculateProbability(mean[i], covar[i], data[index]);
-		sum = sum + exp(prob[index*components + i]);
+		prob[index*components + i] = logPriors[i] + calculateProbability(mean[i], covar[i], data[index], index);
+		if (max_argument < prob[index*components + i])
+			max_argument = prob[index*components + i];
 	}
-	sum = log(sum);
 
+	float sum = 0.0;
+	for (int i = 0; i < components; i++) {
+		sum = sum + exp(logPriors[i] + prob[index*components + i] - max_argument);
+	}
+	sum = max_argument + log(sum);
+	if (index == 400)
+		printf("\n The sum value p(x) is : %0.5f\n", sum);
 	for (int i = 0; i < components; i++) {
 		prob[index*components + i] = prob[index*components + i] - sum;
 	}
@@ -143,11 +152,22 @@ __global__ void calculateTotalComponent(float *out, float *in, int N, int compon
 	int index = (blockIdx.x * blockDim.x) + threadIdx.x;
 	if (index >= components)
 		return;
-	float sum = 0;
+	float sum = 0.0;
+	float max_argument = -INFINITY;
+
 	for (int i = 0; i < N; i++) {
-		sum += exp(in[i*components + index]);
+		if (max_argument < in[i*components + index])
+			max_argument = in[i*components + index];
 	}
-	out[index] = log(sum);
+
+	for (int i = 0; i < N; i++) {
+		sum += exp(in[i*components + index] - max_argument);
+	}
+	out[index] = max_argument + log(sum);
+	if (index == 10) {
+		printf("\n Total value is :%0.5f \n", out[index]);
+		printf("\n Max argument value is :%0.5f \n", max_argument);
+	}
 }
 
 __global__ void calculateTotalComponentSum(float *out, float *in1, float *in2, int components) {
@@ -155,15 +175,22 @@ __global__ void calculateTotalComponentSum(float *out, float *in1, float *in2, i
 	if (index >= components)
 		return;
 
-	out[index] = exp(in1[index] + in2[index]);
+	out[index] = in1[index] + in2[index];
 }
 
-__global__ void updateLogPriors(float *a, float *b, float accum,int components) {
+__global__ void calculateTotalComponentSumExp(float *a, float *max_argument, int components) {
 	int index = (blockIdx.x * blockDim.x) + threadIdx.x;
 	if (index >= components)
 		return;
 
-	b[index] = b[index] + a[index] - log(accum);
+	a[index] = exp(a[index] - *max_argument);
+}
+__global__ void updateLogPriors(float *a, float *b, float accum,float *max_argument,int components) {
+	int index = (blockIdx.x * blockDim.x) + threadIdx.x;
+	if (index >= components)
+		return;
+
+	b[index] = b[index] + a[index] - *max_argument - log(accum);
 }
 
 __global__ void updateMu(glm::vec3 *data, float *totalComponentPrior, float *logProb, glm::vec3 *out,int components, int N) {
@@ -176,6 +203,7 @@ __global__ void updateMu(glm::vec3 *data, float *totalComponentPrior, float *log
 		sum += data[i] * exp(logProb[i*components + index]);
 	}
 	out[index] = sum / (exp(totalComponentPrior[index]));
+	
 }
 
 __global__ void updateCovar(glm::vec3 *data,float *totalComponentPrior, float *logProb, glm::vec3 *mean, glm::mat3 *covar,int components, int N) {
@@ -188,6 +216,9 @@ __global__ void updateCovar(glm::vec3 *data,float *totalComponentPrior, float *l
 		sum += glm::outerProduct(data[i] - mean[index], data[i] - mean[index]) * exp(logProb[i*components + index]);
 	}
 	covar[index] = sum / (exp(totalComponentPrior[index]));
+	//for (int i = 0; i < 3; i++) {
+	//	printf("\n %0.5f , %0.5f, %0.5f \n", covar[index][i][0], covar[index][i][1], covar[index][i][2]);
+	//}
 
 }
 
@@ -196,13 +227,14 @@ __global__ void logLikelihoodValueComponents(glm::vec3 *data, glm::vec3 *mean, g
 	if (index >= components)
 		return;
 
-	float sum = 0;
+	float sum = 0.0;
 	for (int i = 0; i < components; i++) {
-		sum += exp(dev_logPriors[i]) * exp(calculateProbability(mean[i], covar[i], data[index]));
+		sum += exp(dev_logPriors[i]) * exp(calculateProbability(mean[i], covar[i], data[index],index));
 	}
 	dev_PriorsSum[index] = log(sum);
 }
 
+/*
 __global__ void expectationStep(glm::vec2 *data, glm::vec2 *mean, glm::mat2 *covar, float *priors, float *prob, int N, int components) {
 	int index = (blockIdx.x * blockDim.x) + threadIdx.x;
 	if (index >= N)
@@ -219,7 +251,7 @@ __global__ void expectationStep(glm::vec2 *data, glm::vec2 *mean, glm::mat2 *cov
 		prob[index*components + i] /= sum;
 	}
 }
-
+*/
 /*
 __global__ void distancefromCentroids(glm::vec3 *points, glm::vec3 *mu, float *distance, int N, int components) {
 	int index = (blockIdx.x * blockDim.x) + threadIdx.x;
@@ -281,9 +313,16 @@ void maximizationStep(glm::vec3 *data, glm::vec3 *mean, glm::mat3 *covar, float 
 	calculateTotalComponentSum << <fullBlocksPerGrid1, blockSize >> > (dev_totalComponentPriorSumExp, dev_totalComponentPrior, logPriors, components);
 	checkCUDAErrorWithLine("kernel calculateTotalComponentSum failed");
 
+	printf("\n Hello it came here\n");
+	float *max_element = thrust::max_element(thrust::device,dev_totalComponentPriorSumExp, dev_totalComponentPriorSumExp +  components);
+	printf("\n Hello it done here\n");
+
+	calculateTotalComponentSumExp << <fullBlocksPerGrid1, blockSize >> > (dev_totalComponentPriorSumExp, max_element, components);
+	checkCUDAErrorWithLine("kernel calculateTotalComponentSumExp failed");
+
 	float accum = thrust::reduce(thrust::device, dev_totalComponentPriorSumExp, dev_totalComponentPriorSumExp + components);
 	
-	updateLogPriors << <fullBlocksPerGrid1,blockSize >> > (dev_totalComponentPrior,logPriors,accum,components);
+	updateLogPriors << <fullBlocksPerGrid1,blockSize >> > (dev_totalComponentPrior,logPriors,accum,max_element,components);
 	checkCUDAErrorWithLine("kernel updateLogPriors failed");
 
 	float *weights = new float[components];
@@ -336,6 +375,7 @@ void GMM::solve(vector<glm::vec3> points, glm::vec3 *mu, float *weights, int ite
 	float *dev_logPriors;
 	float *dev_logProb;
 	float *dev_PriorsSum;
+	float *max_argument;
 	//glm::vec3 *dev_source;
 
 	for (int i = 0; i < components; i++) {
@@ -371,6 +411,9 @@ void GMM::solve(vector<glm::vec3> points, glm::vec3 *mu, float *weights, int ite
 	cudaMalloc((void**)&dev_PriorsSum, N * sizeof(float));
 	checkCUDAErrorWithLine("cudaMalloc dev_covar failed!");
 
+	cudaMalloc((void**)&max_argument, sizeof(float));
+	checkCUDAErrorWithLine("cudaMalloc max_argument failed!");
+
 	//cudaMemcpy(dev_source, &points[0], N * sizeof(glm::vec3), cudaMemcpyHostToDevice);
 	//checkCUDAErrorWithLine("cudaMemCpy dev_source failed!");
 
@@ -402,7 +445,6 @@ void GMM::solve(vector<glm::vec3> points, glm::vec3 *mu, float *weights, int ite
 		checkCUDAErrorWithLine("Kernel expectation Step failed!");
 		//printf("\nprinted here");
 		cudaDeviceSynchronize();
-
 
 		maximizationStep(dev_points, dev_mu, dev_covar, dev_logPriors, dev_logProb, N, components);
 
@@ -532,7 +574,7 @@ void scanRegistration::runSimulation(vector<glm::vec3>& source, vector<glm::vec3
 	glm::vec3 *mu = new glm::vec3[components];
 	float *weights = new float[components];
 
-	g1.solve(source, mu, weights, 30, sourcePoints);
+	g1.solve(source, mu, weights, 20, sourcePoints);
 
 	//glm::vec3 *mu2 = new glm::vec3[100];
 	//glm::mat3 *covar2 = new glm::mat3[100];
