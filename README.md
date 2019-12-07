@@ -12,3 +12,9 @@ The Gaussian Mixure Models are implemented on Stanford Bunny for visualizing GMM
 :-------------------------:|:-------------------------:
 ![](img_gmmreg/bunny_100_Components.gif)| 		![](img_gmmreg/bunny_800_Components.gif)
 
+The performance analysis of CPU and GPU implmentations are shown below:
+
+![](https://github.com/somanshu25/CIS565_Final_Project/blob/master/img_gmmreg/performance_analysis_1.png)
+![](https://github.com/somanshu25/CIS565_Final_Project/blob/master/img_gmmreg/performance_analysis_2.png)
+
+The above graphs mention that GPU performance improves with respet to our CPU implementation of point cloud registration.
