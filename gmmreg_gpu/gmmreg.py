@@ -8,6 +8,7 @@ import numpy as np
 import gmm as ft
 import cost_functions as cf
 import time
+import transformations as trans
 
 
 class L2DistRegistration(object):
@@ -48,6 +49,7 @@ class L2DistRegistration(object):
 		ndata, ndim = data.shape
 		data_hat = data - np.mean(data, axis=0)
 		self._sigma = np.power(np.linalg.det(np.dot(data_hat.T, data_hat) / (ndata - 1)), 1.0 / (2.0 * ndim))
+		print("Estimated Sigma: ", self._sigma)
 
 	def _annealing(self):
 		self._sigma *= self._delta
@@ -58,7 +60,7 @@ class L2DistRegistration(object):
 			c(tf_result)
 
 	def registration(self, target, maxiter=1, tol=1.0e-3,
-					 opt_maxiter=50, opt_tol=1.0e-3):
+					 opt_maxiter=10, opt_tol=1.0e-5):
 
 		start = time.time()
 		f = None
@@ -69,13 +71,22 @@ class L2DistRegistration(object):
 		mu_target, phi_target = self._feature_gen.compute(target)
 		end_gmm_1 = time.time()
 
+		pcd.points = o3.utility.Vector3dVector(mu_target)
+		pcd.paint_uniform_color([1,1,0])
+
 		for _ in range(maxiter):
 			start_gmm_2 = time.time()
 			mu_source, phi_source = self._feature_gen.compute(self._source)
+			pcd2.points = o3.utility.Vector3dVector(mu_source)
+			pcd2.paint_uniform_color([0,0,1])
 			end_gmm_2 = time.time()
 			
+			print(mu_source.shape)
+			print("Initial: ", x_ini)
+
 			args = (mu_source, phi_source,
 					mu_target, phi_target, self._sigma)
+			t1 = time.time()
 			res = minimize(self._cost_fn,
 						   x_ini,
 						   args=args,
@@ -83,9 +94,12 @@ class L2DistRegistration(object):
 						   tol=opt_tol,
 						   options={'maxiter': opt_maxiter},
 						   callback=self.optimization_cb)
+			t2 = time.time()
+			print("Optimizer TIME: ", t2-t1)
 			self._annealing()
 			self._feature_gen.annealing()
 			if not f is None and abs(res.fun - f) < tol:
+				print("Check:", f)
 				break
 			f = res.fun
 			x_ini = res.x
@@ -96,13 +110,28 @@ class L2DistRegistration(object):
 		print("Overall Time taken: ", end - start)
 		return self._cost_fn.to_transformation(res.x)
 
+class RigidSVR(L2DistRegistration):
+    def __init__(self, source, sigma=1.0, delta=0.9,
+                 gamma=0.5, nu=0.1, use_estimated_sigma=True):
+        super(RigidSVR, self).__init__(source,
+                                       ft.OneClassSVM(source.shape[1],
+                                                      sigma, gamma, nu),
+                                       cf.RigidCostFunction(),
+                                       sigma, delta,
+                                       use_estimated_sigma)
+
+    def _estimate_sigma(self, data):
+        super(RigidSVR, self)._estimate_sigma(data)
+        self._feature_gen._sigma = self._sigma
+        self._feature_gen._gamma = 1.0 / (2.0 * np.square(self._sigma))
 
 class RigidGMMReg(L2DistRegistration):
-	def __init__(self, source, sigma=1.0, delta=0.9,
-				 n_gmm_components=100, use_estimated_sigma=True):
+	def __init__(self, source, sigma=5.0, delta=0.9,
+				 n_gmm_components=50, use_estimated_sigma=True):
 		print(source.shape)
 		n_gmm_components = min(n_gmm_components, int(source.shape[0] * 0.8))
-		super(RigidGMMReg, self).__init__(source, ft.GMM_GPU(n_gmm_components),
+		print("Number of components: ", n_gmm_components)
+		super(RigidGMMReg, self).__init__(source, ft.GMM_Sklearn(n_gmm_components, max_iter=100),
 										  cf.RigidCostFunction(),
 										  sigma, delta,
 										  use_estimated_sigma)
@@ -116,6 +145,21 @@ def registration_gmmreg(source, target, tf_type_name='rigid',
 		raise ValueError('Unknown transform type %s' % tf_type_name)
 	gmmreg.set_callbacks(callbacks)
 	return gmmreg.registration(cv(target))
+
+def registration_svr(source, target, tf_type_name='rigid',
+                     maxiter=1, tol=1.0e-3,
+                     opt_maxiter=50, opt_tol=1.0e-3,
+                     callbacks=[], **kargs):
+    cv = lambda x: np.asarray(x.points if isinstance(x, o3.geometry.PointCloud) else x)
+    if tf_type_name == 'rigid':
+        svr = RigidSVR(cv(source), **kargs)
+    else:
+        raise ValueError('Unknown transform type %s' % tf_type_name)
+    svr.set_callbacks(callbacks)
+    return svr.registration(cv(target), maxiter, tol, opt_maxiter, opt_tol)
+
+pcd = o3.geometry.PointCloud()
+pcd2 = o3.geometry.PointCloud()
 
 if __name__ == "__main__":
 	# from probreg import callbacks
@@ -136,22 +180,31 @@ if __name__ == "__main__":
 	import copy
 	#from probreg import transformation
 
-	source = o3.read_point_cloud('bunny.pcd')
-	target = copy.deepcopy(source)
-	# transform target point cloud
-	th = np.deg2rad(30.0)
-	target.transform(np.array([[np.cos(th), -np.sin(th), 0.0, 0.0],
-							[np.sin(th), np.cos(th), 0.0, 0.0],
-							[0.0, 0.0, 1.0, 0.0],
-							[0.0, 0.0, 0.0, 1.0]]))
-	source = o3.voxel_down_sample(source, voxel_size=0.0015)
-	target = o3.voxel_down_sample(target, voxel_size=0.0015)
+	source = o3.read_point_cloud('waymo1.pcd')
+	target = o3.read_point_cloud("waymo50.pcd")
+	#source = o3.read_point_cloud('bunny.pcd')
+	# target = copy.deepcopy(source)
+	# # transform target point cloud
+	# th = np.deg2rad(10.0)
+	# target.transform(np.array([[np.cos(th), -np.sin(th), 0.0, 0.0],
+	# 						[np.sin(th), np.cos(th), 0.0, 0.0],
+	# 						[0.0, 0.0, 1.0, 0.0],
+	# 						[0.0, 0.0, 0.0, 1.0]]))
+	source = o3.voxel_down_sample(source, voxel_size=0.6)
+	target = o3.voxel_down_sample(target, voxel_size=0.6)
 
+	# source = o3.voxel_down_sample(source, voxel_size=0.005)
+	# target = o3.voxel_down_sample(target, voxel_size=0.005)
 
 	# compute cpd registration
 	#tf_param, _ = gmmtree.registration_gmmtree(source, target)
 
-	tf_param = registration_gmmreg(source, target, callbacks=[])
+	tf_param = registration_svr(source, target, callbacks=[])
+	#tf_param = registration_gmmreg(source, target, callbacks=[])
+
+	rot = trans.identity_matrix()
+	rot[:3, :3] = tf_param.rot
+	print("result: ", np.rad2deg(trans.euler_from_matrix(rot)), tf_param.scale, tf_param.t)
 
 	result = copy.deepcopy(source)
 	result.points = tf_param.transform(result.points)
@@ -161,3 +214,4 @@ if __name__ == "__main__":
 	target.paint_uniform_color([0, 1, 0])
 	result.paint_uniform_color([0, 0, 1])
 	o3.draw_geometries([source, target, result])
+	#o3.draw_geometries([pcd, pcd2])

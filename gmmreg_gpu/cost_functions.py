@@ -26,9 +26,12 @@ class CostFunction():
 
 def compute_l2_dist(mu_source, phi_source,
 					mu_target, phi_target, sigma):
+	#print(sigma)
 	z = np.power(2.0 * np.pi * sigma**2, mu_source.shape[1] * 0.5)
+	#print("Z", z)
 	gtrans = tf.GaussTransform(mu_target, np.sqrt(2.0) * sigma)
 	phi_j_e = gtrans.compute(mu_source, phi_target / z)
+	#print(phi_j_e)
 	phi_mu_j_e = gtrans.compute(mu_source, phi_target * mu_target.T / z).T
 	g = (phi_source * phi_j_e * mu_source.T - phi_source * phi_mu_j_e.T).T / (2.0 * sigma**2)
 	return -np.dot(phi_source, phi_j_e), g
@@ -56,4 +59,5 @@ class RigidCostFunction(CostFunction):
 		d_rot = so.diff_rot_from_quaternion(theta[:4])
 		gtm0 = np.dot(g.T, mu_source)
 		grad = np.concatenate([(gtm0 * d_rot).sum(axis=(1, 2)), g.sum(axis=0)])
+		#print("inside", theta, f)
 		return f, grad
