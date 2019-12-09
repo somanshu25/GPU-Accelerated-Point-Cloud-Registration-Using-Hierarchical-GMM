@@ -1,8 +1,12 @@
-**University of Pennsylvania, CIS 565: GPU Programming and Architecture, Final Project: Point Cloud Registration Using Gaussian Mixure Models**
+Gaussian Mixture Models for 3D Point Cloud Registration
+======================
 
-* SOMANSHU AGARWAL [LinkedIn](https://www.linkedin.com/in/somanshu25)
-* SRINATH RAJAGOPALAN [LinkedIn](https://www.linkedin.com/in/srinath-rajagopalan-07a43155)
-* DHRUV KARTHIK [LinkedIn](https://www.linkedin.com/in/dhruvkarthik/)
+**University of Pennsylvania, CIS 565: GPU Programming and Architecture,
+Final Project**
+
+* Somanshu Agarwal [LinkedIn](https://www.linkedin.com/in/somanshu25)
+* Srinath Rajagopalan [LinkedIn](https://www.linkedin.com/in/srinath-rajagopalan-07a43155)
+* Dhruv Karthik [LinkedIn](https://www.linkedin.com/in/dhruvkarthik/)
 
 <p align= "center">
 <img src="img_gmmreg/GMM_waymo.gif" width = 600 height = 400>
@@ -12,7 +16,7 @@
 
 1. [Introduction](#Introduction)
 2. [Gaussian Mixure Models](#Gaussian-Mixure-Models)
-3. [Probabilistic Models vs ICP](#Probabilistic-Models-vs-ICP)
+3. [GMM Registration](#GMM-Registration-with-Noisy-Targets)
 4. [Algorithms](#Effects)
 5. [Use Cases](#Optimization)
 6. [Performance Analysis](#Analysis)
