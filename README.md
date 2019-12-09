@@ -6,11 +6,11 @@
 
 ![](https://github.com/somanshu25/CIS565_Final_Project/blob/master/img_gmmreg/GMM_waymo.gif)
 
-### Table of Contents
+# Table of Contents
 
 1. [Introduction](#Introduction)
-2. [Gaussian Mixure Models](#Forward-Plus)
-3. [Why Probabilistic Models than ICP](#CLustering)
+2. [Gaussian Mixure Models](#Gaussian-Mixure-Models)
+3. [Probabilistic Models vs ICP](#Probabilistic-Models-vs-ICP)
 4. [Algorithms](#Effects)
 5. [Use Cases](#Optimization)
 6. [Performance Analysis](#Analysis)
@@ -38,6 +38,14 @@ The Gaussian Mixure Models are implemented on Stanford Bunny for visualizing GMM
 100 Components             |  800 Components
 :-------------------------:|:-------------------------:
 ![](img_gmmreg/bunny_100_Components.gif)| 		![](img_gmmreg/bunny_800_Components.gif)
+
+## Probabilistic-Models-vs-ICP
+
+Iterative Closest point (ICP) algorithm is point to poitn approach where we try to match the correspondence for each source to the target point cloud data. The algorithms tries to align each source point to its nearest target point by using the SVD optimization to get the transformation parameters (Rotation and translational in case of rigid transformation) and we kepp doing the process iteratively till the loss converges to a minimum value. The drarback of the above algorithm is that it tries to align source's center of mass with the target one. In this process, the optimization might converge to the local minima where the point cloud data are not purely aligned, as mentioned in the figures below.
+
+<p align="center">
+<img src = "img_gmmreg/image_icp_limitation.png" width="600">
+ </p>
 
 The performance analysis of CPU and GPU implmentations are shown below:
 
