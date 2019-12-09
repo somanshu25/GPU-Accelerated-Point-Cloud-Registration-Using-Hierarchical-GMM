@@ -4,7 +4,9 @@
 * SRINATH RAJAGOPALAN [LinkedIn](https://www.linkedin.com/in/srinath-rajagopalan-07a43155)
 * DHRUV KARTHIK [LinkedIn](https://www.linkedin.com/in/dhruvkarthik/)
 
-![](https://github.com/somanshu25/CIS565_Final_Project/blob/master/img_gmmreg/GMM_waymo.gif)
+<p align= "center">
+<img src="https://github.com/somanshu25/CIS565_Final_Project/blob/master/img_gmmreg/GMM_waymo.gif" width = 400 height =300>
+ <p/>
 
 # Table of Contents
 
