@@ -15,11 +15,11 @@
 5. [Use Cases](#Optimization)
 6. [Performance Analysis](#Analysis)
 7. [Future Work](#Future-Work)
-8. [Credits](#Credits)
+8. [References](#References)
 
 # Introduction
 
-Point cloud registration is greatly used in the field of computer vision applications such as localization. Using detereministic approached such as Iterative Closest point (ICP) works well, but it suffers the issue of coverging to local minima and not aligning the poinclouds properly. One of the ways to improve this limitation is to use probablistic models and learn distributions on the poitn cloud data and align the distributions itself. We are using Gaussian Mixure Model which is driven by expectation maximization algorihtm to learn the distributions on the point cloud data and align them. We will be comparing the CPU and GPU implementation and showcase some of the applications such as unsupervised segmentation and localization. Later on, we will demonstrate a faster approach of GMM model, using Hierarchical Gaussian Mixure Model to learn the distirbutions in logarithmic time. 
+Point cloud registration is greatly used in the field of computer vision applications such as localization technically, to merge maps produced by different sensors. Using detereministic approached such as Iterative Closest point (ICP) works well for some of the cases, but it suffers the issue of coverging to local minima and not aligning the poinclouds properly, especially in case where a dense point cloud data has to be aligned to the saprse one. One of the ways to improve this limitation is to use probablistic models and learn distributions on the point cloud data and align the distributions itself. Hence, each point in the source point cloud is associated with a set of points in the target point cloud; each association is then weighted so that the weights form a probability distribution. We are using Gaussian Mixure Model which is driven by expectation maximization algorihtm to learn the distributions on the point cloud data and align them. We will be comparing the CPU and GPU implementation and showcase some of the applications such as unsupervised segmentation and localization. Later on, we will demonstrate a faster approach of GMM model, using Hierarchical Gaussian Mixure Model to learn the distirbutions in logarithmic time. 
 
 # Gaussian Mixure Models
 
@@ -47,9 +47,22 @@ Iterative Closest point (ICP) algorithm is point to poitn approach where we try 
 <img src = "img_gmmreg/image_icp_limitation.png" width="600">
  </p>
 
+Probablistic ways tend to work better in case of computer vision applications which we have studies in our project work.
+
+## Algorithms 
+
+In our project, we have looked at various algorithms to perform Gaussian Mixure Models. We have looked at the standard Gaussian mixure model algorithm with full, disagonal and spherical covariances updates. 
+
+## Performance Analysis
+
 The performance analysis of CPU and GPU implmentations are shown below:
 
 ![](https://github.com/somanshu25/CIS565_Final_Project/blob/master/img_gmmreg/performance_analysis_1.png)
 ![](https://github.com/somanshu25/CIS565_Final_Project/blob/master/img_gmmreg/performance_analysis_2.png)
 
 The above graphs mention that GPU performance improves with respet to our CPU implementation of point cloud registration.
+
+## References
+1. [Point Clouds Registration with Probabilistic Data Association](https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=7759602&tag=1)
+1. [Fast and Accurate Point Cloud Registration
+using Trees of Gaussian Mixtures](https://arxiv.org/pdf/1807.02587.pdf)
