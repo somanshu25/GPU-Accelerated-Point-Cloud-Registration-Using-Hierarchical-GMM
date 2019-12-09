@@ -78,7 +78,7 @@ Source Link: [GPU-Accelerated-3d-Point-Cloud-Processing-with-Hierarchical-Gaussi
 
 For N points and J clusters, the complexities of HMM registration and HGMM registration methods are given below:
 
-| Algorithm| Associative Complexity | Optimization Complexity  | Contruction Complexity |
+| Algorithm| Associative Complexity | Optimization Complexity  | Construction Complexity |
 | --- | --- |---|---|
 | EM-ICP | O(N log N) | O(N<sup>2</sup>) |--- |
 | GMM-Reg | O(N) | O(N<sup>2</sup>) |O(NJ)|
