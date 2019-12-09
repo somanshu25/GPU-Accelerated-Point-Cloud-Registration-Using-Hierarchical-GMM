@@ -1,12 +1,8 @@
-Gaussian Mixture Models for 3D Point Cloud Registration
-======================
+**University of Pennsylvania, CIS 565: GPU Programming and Architecture, Final Project: Point Cloud Registration Using Gaussian Mixure Models**
 
-**University of Pennsylvania, CIS 565: GPU Programming and Architecture,
-Final Project**
-
-* Somanshu Agarwal [LinkedIn](https://www.linkedin.com/in/somanshu25)
-* Srinath Rajagopalan [LinkedIn](https://www.linkedin.com/in/srinath-rajagopalan-07a43155)
-* Dhruv Karthik [LinkedIn](https://www.linkedin.com/in/dhruvkarthik/)
+* SOMANSHU AGARWAL [LinkedIn](https://www.linkedin.com/in/somanshu25)
+* SRINATH RAJAGOPALAN [LinkedIn](https://www.linkedin.com/in/srinath-rajagopalan-07a43155)
+* DHRUV KARTHIK [LinkedIn](https://www.linkedin.com/in/dhruvkarthik/)
 
 <p align= "center">
 <img src="img_gmmreg/GMM_waymo.gif" width = 600 height = 400>
@@ -16,11 +12,12 @@ Final Project**
 
 1. [Introduction](#Introduction)
 2. [Gaussian Mixure Models](#Gaussian-Mixure-Models)
-3. [GMM Registration](#GMM-Registration-with-Noisy-Targets)
-4. [Algorithms](#Effects)
-5. [Use Cases](#Optimization)
+3. [ICP Misalignment](#ICP-Misalignment)
+4. [GMM Registration with Noisy Targets](#GMM-Registration-with-Noisy-Targets)
+5. [Implementation](#Implementation)
+6. [Use Cases](#Use-cases)
 6. [Performance Analysis](#Analysis)
-7. [Future Work](#Future-Work)
+7. [Requirements for Code](#Requirements-for-Code)
 8. [References](#References)
 
 ## Introduction
@@ -78,6 +75,14 @@ The issue with conventional GMM modelling is bottleneck due to linear search ove
  <p/>
 
 For N points and J clusters, the complexities of HMM registration and HGMM registration methods are given below:
+
+| Algorithm| Associative Complexity | Optimization Complexity  |
+| --- | --- |---|
+| EM-ICP | O(N log N) | O(N<sup>2</sup>) |
+| GMM-Reg | O(N) | O(N<sup>2</sup>) |
+| HGMM-Reg | O(N log J ) | O(log J) |
+
+
 EM-ICP: Associative complexity: O(N log N); optimization Complexity: O(N<sup>2</sup>)
 GMM Reg: Associative Complexity: O(N) ; Optimization Complexity: O(N<sup>2</sup>)
 HGMM Reg: Associative Complexity: O(N log J ) ; Optimization Complexity: O(log J)
@@ -221,7 +226,7 @@ We also evaluate the FPS on Waymo's LIDAR data and compare CPU vs GPU.
  1) For 10k points, while we can achieve close to 10 FPS, we are bottlenecked by Open3D visualizer rendering via the CPU.
  2) For larger point clouds (> 50k points), the GPU to CPU data transfer is no longer the bottleneck. Our GMM implementation itself is not fast enough.
 
-Requirements for Code:
+## Requirements for Code:
 1.	Python 3.5 or above
 2.	Numba  0.43.1
 3.	CuPy 7.0.0
