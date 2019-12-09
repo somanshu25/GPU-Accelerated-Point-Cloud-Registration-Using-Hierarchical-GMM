@@ -51,28 +51,47 @@ Iterative Closest point (ICP) algorithm is point to poitn approach where we try 
 
 Probabilistic ways tend to work better in case of computer vision applications which we have studies in our project work.
 
-## Algorithms 
+## Algorithms and implementation Details 
 
-In our project, we have looked at various algorithms to perform Gaussian Mixure Models. We have looked at the standard Gaussian mixure model algorithm with full, disagonal and spherical covariances updates. 
-
+In our project, we have looked at various algorithms to perform Gaussian Mixure Models. We have looked at the standard Gaussian mixure model algorithm with full, disagonal and spherical covariances updates. Our implementation includes the usage of Numba and CuPy kernels in Python to compare the performance of CPU and GPU implementations. We also implemented EM algorithm in C++ version before shifting to Python version because of the issues we were facing to integrate Open3D visualizer due to limited resources. 
 ## Use cases
 
 ### Unsupervised Segmentation
-![](https://github.com/somanshu25/CIS565_Final_Project/blob/master/img_gmmreg/GMM_waymo.gif)
+
+In the case of supervised image segmentation, the architectures in general assigns labels to pixels that denote the cluster to which the pixel belongs. In the unsupervised scenario, however, no training images or ground truth labels of pixels are given beforehand. Therefore, once when a target image is input, we jointly labels together with feature representations while minimizing the cost function using optimization. In our case, clustering can be used as a way to segment the features which are alike in the same gaussian. More the number of compoennts, more finer the groups will become. We will use our GPU implementation to speedup the clustering and segment the image faster. The reference for the unsupervised image segmentation can be seen [here](https://kanezaki.github.io/pytorch-unsupervised-segmentation/).
+
+With CPU Implementation            |  With GPU Implementation
+:-------------------------:|:-------------------------:
+![](img_gmmreg/GMM_waymo.gif))|  ![]()
+
 
 ### Localization
-![](https://github.com/somanshu25/CIS565_Final_Project/blob/master/img_gmmreg/localization_1.gif)
+
+The self-localization of mobile robots in the environment is one of the most fundamental problems in the robotics navigation field. Aligning the frames from the data received through the sensors (LIDAR point cloud data) can help us to locate and trace the path of the robot. The rotation and translational paramenters required for the robot to stay in the path could be dteremined from the parameters recieved through the point cloud registration. The follwing implementation could be fasteted using the GPU implementations.
+
+With CPU Implementation            |  With GPU Implementation
+:-------------------------:|:-------------------------:
+![](img_gmmreg/localization_1.gif))|  ![]()
 
 ## Performance Analysis
+
+The plot of log Likelihood value as the function of number of iterations is given below. (The code was run on C++ implementation of EM algorithm). 
+
+
+With 100 Components            |  With 500 Components
+:-------------------------:|:-------------------------:
+![](img_gmmreg/image_em_algo.png))|  ![](img_gmmreg/image_em_algo_500%20compo.jpg)
 
 The performance analysis of CPU and GPU implmentations are shown below:
 
 ![](https://github.com/somanshu25/CIS565_Final_Project/blob/master/img_gmmreg/performance_analysis_1.png)
 ![](https://github.com/somanshu25/CIS565_Final_Project/blob/master/img_gmmreg/performance_analysis_2.png)
 
-The above graphs mention that GPU performance improves with respet to our CPU implementation of point cloud registration.
+The above graphs mention that GPU performance improves with respect to our CPU implementation of point cloud registration.
 
 ## References
 1. [Point Clouds Registration with Probabilistic Data Association](https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=7759602&tag=1)
 1. [Fast and Accurate Point Cloud Registration
 using Trees of Gaussian Mixtures](https://arxiv.org/pdf/1807.02587.pdf)
+1. [Accelerated Generative Models for 3D Point Cloud Data](https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=7780962)
+1. 
