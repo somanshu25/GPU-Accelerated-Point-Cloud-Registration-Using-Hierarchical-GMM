@@ -5,7 +5,7 @@
 * DHRUV KARTHIK [LinkedIn](https://www.linkedin.com/in/dhruvkarthik/)
 
 <p align= "center">
-<img src="https://github.com/somanshu25/CIS565_Final_Project/blob/master/img_gmmreg/GMM_waymo.gif" width = 600 height = 400>
+<img src="img_gmmreg/GMM_waymo.gif" width = 600 height = 400>
  <p/>
 
 ## Table of Contents
@@ -21,11 +21,17 @@
 
 ## Introduction
 
-Point cloud registration is greatly used in the field of computer vision applications such as localization technically, to merge maps produced by different sensors. Using detereministic approached such as Iterative Closest point (ICP) works well for some of the cases, but it suffers the issue of coverging to local minima and not aligning the poinclouds properly, especially in case where a dense point cloud data has to be aligned to the saprse one. One of the ways to improve this limitation is to use probablistic models and learn distributions on the point cloud data and align the distributions itself. Hence, each point in the source point cloud is associated with a set of points in the target point cloud; each association is then weighted so that the weights form a probability distribution. We are using Gaussian Mixure Model which is driven by expectation maximization algorihtm to learn the distributions on the point cloud data and align them. We will be comparing the CPU and GPU implementation and showcase some of the applications such as unsupervised segmentation and localization. Later on, we will demonstrate a faster approach of GMM model, using Hierarchical Gaussian Mixure Model to learn the distirbutions in logarithmic time. 
+Representing continuous geometry via discretizing point clouds introduces artifacts and does not enable us to deal with noise or uncertainity in the data. Also, discrete representations are non-differentiable. Having a probabilistic representation of point clouds can be used for up-sampling, mesh-reconstruction, and effectively dealing with noise and outliers. In this project, we focus on training Gaussian Mixture Models, a class of generative models, on 3D Point Clouds. Subsequently, we use learned GMM for Point Cloud Registration. PCR is extensively used in the computer vision and robotics for 3D object mapping, SLAM, dense Reconstruction, 3D pose estimation etc. In autonomous driving, massive ammounts of 3D point cloud data is captured from various sensors (LiDAR) from different coordinate systems. PCR is used to align a pair of point clouds to a common coordinate frame. 
+
+The widely used algorithm for registration, Iterative Closest Point (ICP), does not work well when we are dealing with noise or outliers or if the point cloud data has uneven density or includes occlusion artifacts. Statistical approaches based on GMMs help in addressing these drawbacks but have been slow and inefficient to be used for real-time applications. But with the help of GPU and recent advancements from [Accelerated Generative Models for 3D Point Cloud Data](http://www.kihwan23.com/papers/CVPR16/GMM16.pdf) and [Fast and Accurate Point Cloud Registration using Trees of Gaussian Mixtures](https://arxiv.org/pdf/1807.02587.pdf), we can efficiently scale GMM training and registration on 3D point clouds.
 
 ## Gaussian Mixure Models
 
-Gaussian Mixure Model (GMM) is the unsupervised probabilistic modelling technique for representing normally distributed subpopulations within an overall population. This is unsupervised as we do not have information about the subpopulations. We estimate the information about subpopulations using Expectation-maximization algorithms. We can apply GMM modelling to both 2D and 3D points to represent the clustering points in the space. The 2D and 3D representations are shown in the figures below.
+Gaussian Mixtures model the joint probability distribution of a data via a mixture of normal distrubtions (called components/clusters). The parameters of GMM can be estimated by maximizing the log-likelihood via the Expecation-Maximization algorithm. 
+
+In the following figure, we cluster a set of 2D points with GMM. Unlike KMeans, GMM can be used for soft-clustering where a point can belong to multiple clusters with a corresponding probability.
+
+The following figure illustrates GMM clustering on a set of 2D points
 
 ### Gaussian Mixure Models for 2D Dataset:
 
@@ -33,7 +39,18 @@ Before Clustering            |  After Clustering
 :-------------------------:|:-------------------------:
 ![](img_gmmreg/gmm_before_clustering.png)|  ![](img_gmmreg/gmm_2d.png)
 
-### Gaussian Mixure Modelling for 3D Dataset
+
+
+Another example,
+
+Before Clustering            |  After Clustering
+:-------------------------:|:-------------------------:
+![](img_gmmreg/gmm_before_2.png)|  ![](img_gmmreg/gmm_fit.png)
+
+
+
+
+### Gaussian Mixures on 3D Point Clouds
 
 The Gaussian Mixure Models are implemented on Stanford Bunny for visualizing GMM in 3D point cloud data. The below two gifs show for 100 and 800 components respectively.
 
@@ -41,21 +58,57 @@ The Gaussian Mixure Models are implemented on Stanford Bunny for visualizing GMM
 :-------------------------:|:-------------------------:
 ![](img_gmmreg/bunny_100_Components.gif)| 		![](img_gmmreg/bunny_800_Components.gif)
 
-## Probabilistic-Models-vs-ICP
 
-Iterative Closest point (ICP) algorithm is point to poitn approach where we try to match the correspondence for each source to the target point cloud data. The algorithms tries to align each source point to its nearest target point by using the SVD optimization to get the transformation parameters (Rotation and translational in case of rigid transformation) and we kepp doing the process iteratively till the loss converges to a minimum value. The drarback of the above algorithm is that it tries to align source's center of mass with the target one. In this process, the optimization might converge to the local minima where the point cloud data are not purely aligned, as mentioned in the figures below.
+On the Dragon,
+
+10 Components             |  50 Components
+:-------------------------:|:-------------------------:
+![](img_gmmreg/dragon10.png)| 		![](img_gmmreg/dragon50.png)
+
+
+
+## ICP Misalignment
+
+Iterative Closest point (ICP) estimates correspondence and uses point-to-point comparison for registration. The algorithms tries to align each source point to its nearest target point by using the SVD optimization to get the transformation parameters (Rotation and translational in case of rigid transformation) and we kepp doing the process iteratively till the loss converges to a minimum value. The drawback of the above algorithm is that it tries to align source's center of mass with the target one. In this process, the optimization might converge to the local minima where the point cloud data are not purely aligned, as mentioned in the figures below.
 
 <p align="center">
 <img src = "img_gmmreg/image_icp_limitation.png" width="600">
  </p>
 
-Probabilistic ways tend to work better in case of computer vision applications which we have studies in our project work.
 
-## Algorithms and implementation Details 
+ ## GMM Registration with Noisy Targets
 
-In our project, we have looked at various algorithms to perform Gaussian Mixure Models. We have looked at the standard Gaussian mixure model algorithm with full, disagonal and spherical covariances updates. Our implementation includes the usage of Numba and CuPy kernels in Python to compare the performance of CPU and GPU implementations. We also implemented EM algorithm in C++ version before shifting to Python version because of the issues we were facing to integrate Open3D visualizer due to limited resources. 
+Some of the alignments done using the Gaussian Mixure models probabilistic models with the noisy pixels in the target (source is red and target is green color):
 
-One of the implwmwntations that we have worked on is on Hierarchical Gaussiam mixure Models (HGMM's). In normal Gaussian mixure model, the search is over the linear time, while in HGMM models, the search is over the logarithmic time while doing the point cloud registration. In thsi alogrithm, we create the mixure models in the form of tree structure where the parent node is made up of GMM of it's child node. In our implementation, we have taken the value of the number of child node for the parent as 8. Thus, each node except the leaf child will have the comibation of 8 componnets, but as we go down the hierarchy, the micixing coefficients of the oarent will get multiplied to the child's mixing coefficient, making the child compoennts to fit more into the dataset.  
+Bunny Dataset            |  Dragon Dataset
+:-------------------------:|:-------------------------:
+![](img_gmmreg/bunny.gif)|  ![](img_gmmreg/dragon.gif)
+
+
+## Implementation 
+
+Initially, we started with a pure C++ approach for GMM, but realized rapid iteration and integrating with other components can't be done easily. So we settled on the following configuration
+
+1) Implement in Python and use [CuPy](https://cupy.chainer.org/) for numpy arrays on the GPU. This allows for accelerated matrix operations (multiply, dot product, reduction etc) on the GPU while providing a NumPy like interface.
+2)  For fine-grained control and custom kernels, we use [Numba](http://numba.pydata.org/). Numba enables us to write CUDA kernels in Python that get JIT compiled to CUDA-C code. An example Numba CUDA kernel illustrated below ([source](https://numba.pydata.org/numba-doc/latest/cuda/kernels.html)),
+
+```python
+@cuda.jit
+def increment_by_one(an_array):
+    # Thread id in a 1D block
+    tx = cuda.threadIdx.x
+    ty = cuda.blockIdx.x
+    bw = cuda.blockDim.x
+
+    pos = tx + ty * bw
+    if pos < an_array.size:
+        an_array[pos] += 1
+```
+Also, CuPy enables inter-operability with Numba CUDA Device Arrays. So we can seamlessly shift between Numba kernels and CuPy code.
+
+3) We use [Open3D](http://www.open3d.org/) to process and visualize 3D point clouds
+4) For reference of CPU implementation and pre-defined transformations, we use [ProbReg](https://github.com/neka-nat/probreg)
+
 
 ## Use cases
 
@@ -63,14 +116,58 @@ One of the implwmwntations that we have worked on is on Hierarchical Gaussiam mi
 
 In the case of supervised image segmentation, the architectures in general assigns labels to pixels that denote the cluster to which the pixel belongs. In the unsupervised scenario, however, no training images or ground truth labels of pixels are given beforehand. Therefore, once when a target image is input, we jointly labels together with feature representations while minimizing the cost function using optimization. In our case, clustering can be used as a way to segment the features which are alike in the same gaussian. More the number of compoennts, more finer the groups will become. We will use our GPU implementation to speedup the clustering and segment the image faster. The reference for the unsupervised image segmentation can be seen [here](https://kanezaki.github.io/pytorch-unsupervised-segmentation/).
 
+
+On the Lounge,
+
+10 Components             |  50 Components
+:-------------------------:|:-------------------------:
+![](img_gmmreg/lounge10.png)| 		![](img_gmmreg/lounge50.png)
+
+On the left image, we can see how different objects in the scene are neatly grouped together. This can serve as a starting point for semantic segmentation.
+
+
+### GMM on a stream of LIDAR Point Clouds
+
+We can visualize the GMM trained on a sequence of LIDAR point clouds from [Waymo Open Dataset](https://waymo.com/open/)
+
+Starting with just 1k points and 50 Gaussian components (GMM is re-trained every 10 frames),
+
 <p align="center">
-<img src = "img_gmmreg/image_icp_limitation.png" width="600">
+<img src = "img_gmmreg/waymo_gmm_1k.gif">
  </p>
 
+With 10k points,
+
+<p align="center">
+<img src = "img_gmmreg/waymo_gmm_10k.gif">
+ </p>
+
+With 50k points,
+
+
+<p align="center">
+<img src = "img_gmmreg/waymo_gmm_50k.gif">
+</p>
+
+We have 3 running issues while training GMM on moving point clouds,
+
+1) Since Open3D visualizer is on the CPU, we are forced to initiate a GPU to CPU transfer every frame and that creates a bottleneck for faster real-time visualizations
+2) GMM convergence heavily depends on initial parameters. Ideally, the parameters are initialized using KMeans, which introduces additional overhead, so we chose to initialize the parameters randomly due to which for some frames the algorithm converges to a poor local optimum
+3) Every time the GMM is re-trained on the incoming point cloud, we have to assign new colours based on new cluster assignments for each point. While being semantically correct, the changing colours are a bit jarring from a visualization perspective. 
 
 ### Localization
 
-The self-localization of mobile robots in the environment is one of the most fundamental problems in the robotics navigation field. Aligning the frames from the data received through the sensors (LIDAR point cloud data) can help us to locate and trace the path of the robot. The rotation and translational paramenters required for the robot to stay in the path could be dteremined from the parameters recieved through the point cloud registration. The following implementation could be fastened using the GPU implementations.
+We can use PCR for state-estimation/localization of a self-driving car/mobile robot. Aligning the frames from the data received through the sensors (LIDAR point cloud data) can help us to locate and trace the path of the robot. The rotation and translational paramenters required for the robot to stay in the path could be dteremined from the parameters recieved through the point cloud registration. 
+
+The following slide from [State-Estimation and Localization for Self-Driving Cars](https://www.coursera.org/lecture/state-estimation-localization-self-driving-cars/lesson-3-pose-estimation-from-lidar-data-XE9kZ) neatly illustrates this,
+
+
+<p align="center">
+<img src = "img_gmmreg/pcr_localization.png", width=500>
+</p>
+
+
+On Waymo Open Dataset, we use PCR to localize the car. The path of the car is illustrated below.
 
 <p align="center">
 <img src = "img_gmmreg/localization_1.gif" width="400">
@@ -80,27 +177,32 @@ The self-localization of mobile robots in the environment is one of the most fun
 <img src = "img_gmmreg/localization_2.gif" width="400">
  </p>
 
+
+The above visual is using a CPU implementation. Unfortunately, due to logistics issues we couldn't recreate it using the GPU. But the
+
 ## Performance Analysis
 
-The plot of log Likelihood value as the function of number of iterations is given below. (The code was run on C++ implementation of EM algorithm). The algorithm 
 
+We compare the CPU and GPU implemenations of GMM trained on 3D point clouds. There are two variations to consider,
 
-With 100 Components            |  With 500 Components
+1) Performance by varying total number of points
+2) Performance by varying total number of components
+
+No. of Points with Time             |  No. of Components with Time
 :-------------------------:|:-------------------------:
-![](img_gmmreg/image_em_algo.png))|  ![](img_gmmreg/image_em_algo_500%20compo.jpg)
+![](img_gmmreg/gmm_perf1.png)| 		![](img_gmmreg/gmm_perf2.png)
 
-Some of the alignments done using the Gaussian Mixure models probabilistic models with the noisy pixels in the target (source is red and target is green color):
 
-Bunny Dataset            |  Dragon Dataset
-:-------------------------:|:-------------------------:
-![](img_gmmreg/bunny.gif)|  ![](img_gmmreg/dragon.gif)
+We also evaluate the FPS on Waymo's LIDAR data and compare CPU vs GPU.
 
-The performance analysis of CPU and GPU implmentations are shown below:
+<p align="center">
+<img src = "img_gmmreg/gmm_perf3.png" width="500">
+ </p>
 
-![](https://github.com/somanshu25/CIS565_Final_Project/blob/master/img_gmmreg/performance_analysis_1.png)
-![](https://github.com/somanshu25/CIS565_Final_Project/blob/master/img_gmmreg/performance_analysis_2.png)
-
-The above graphs mention that GPU performance improves with respect to our CPU implementation of point cloud registration.
+ While, the GPU is much faster than the CPU, we are still not close to real-time performance. 
+ 
+ 1) For 10k points, while we can achieve close to 10 FPS, we are bottlenecked by Open3D visualizer rendering via the CPU.
+ 2) For larger point clouds (> 50k points), the GPU to CPU data transfer is no longer the bottleneck. Our GMM implementation itself is not fast enough.
 
 ## References
 1. [Point Clouds Registration with Probabilistic Data Association](https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=7759602&tag=1)
