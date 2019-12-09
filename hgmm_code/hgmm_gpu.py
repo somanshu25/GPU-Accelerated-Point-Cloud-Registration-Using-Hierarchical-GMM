@@ -81,7 +81,11 @@ def complexity(cov):
     lamds[::-1].sort()
     return lamds[2]/np.sum(lamds)
 
+@cuda.jit(device=True)
 def child(j):
+    return (j+1) * n_node
+
+def child2(j):
     return (j+1) * n_node
 
 def level(l):
@@ -103,6 +107,8 @@ SQRT_TWOPI = np.float32(math.sqrt((2*math.pi)**D))
 @cuda.jit
 def logLikelihoodValue(mixingCoeff,mean,covar,data,j0,j1,q):
     idx = (cuda.blockDim.x * cuda.blockIdx.x) + cuda.threadIdx.x
+    if (idx >= data.shape[0]):
+        return
     temp = 0.0
     for j in range(j0,j1):
         temp = temp + (mixingCoeff[j] * gaussianPdfKernel(data[idx],mean[j],covar[j]))
@@ -184,7 +190,7 @@ def matmultConstant(const,a,out):
     m,n = a.shape
     for i in range(m):
         for j in range(n):
-            out[i,j] = const[0]*a[i,j]
+            out[i,j] = const*a[i,j]
 
 @cuda.jit(device = True)
 def matAdd(a,b,out):
@@ -205,6 +211,12 @@ def transpose_mat(m, mout):
     for i in range(nr):
         for j in range(nc):
             mout[j,i] = m[i,j]
+
+@cuda.jit(device=True)
+def copyVec3x1(m,mout):
+    n = m.shape[0]
+    for i in range(n):
+        mout[i,0] = m[i]
 
 @cuda.jit(device=True)
 def transpose_vec(m, mout):
@@ -235,31 +247,30 @@ def determinant(a):
 @cuda.jit(device = True)
 def mlEstimator(momentZero,momentOne,momentTwo,mixingCoeff,mean,covar,idx,nTotal,ld):
   
-  if (momentZero < ld):
-      mixingCoeff[idx] = 0.0
-      for i in range(len(mean)):
-          mean[idx,i] = 0.0
-      addZerosMat(covar[idx])
+#   if (momentZero < ld):
+#       mixingCoeff[idx] = 0.0
+#       for i in range(len(mean)):
+#           mean[idx,i] = 0.0
+#       addZerosMat(covar[idx])
 
-  else:  
+#   else:  
     mixingCoeff[idx] = momentZero/nTotal
 
-    for i in range(len(mean)):
+    for i in range(len(mean[idx])):
         mean[idx,i] = momentOne[i]/momentZero
 
+    meanNew = cuda.local.array((D,1), float32)
+    copyVec3x1(mean[idx],meanNew)
     mean_tran = cuda.local.array((1,D), float32)
-    transpose_vec(mean[idx],mean_tran)
+    transpose_mat(meanNew,mean_tran)
+    
     out_temp = cuda.local.array((D,D),float32)
-
     for i in range(D):
         for j in range(D):
             out_temp[i,j] = momentTwo[i,j]/momentZero
 
     out2 = cuda.local.array((D,D),float32)
-    out3 = cuda.local.array((D,1),float32)
-
-    copyVecToMat(mean[idx],out3)
-    matmul(out3,mean_tran,out2)
+    matmul(meanNew,mean_tran,out2)
 
     for i in range(D):
         for j in range(D):
@@ -316,70 +327,102 @@ def accumulateDevice(momentZero,momentOne,momentTwo,j,gamma,point,sumGamma):
     gamma2 = gamma[0]/np.float32(sumGamma)
     if (gamma2 < eps):
         return
-    print(gamma2)
-    momentZero[j] = momentZero[j] + gamma2
+    #print(gamma2)
+    cuda.atomic.add(momentZero,j,gamma2)
 
-    out = cuda.local.array((D,1),float32)
-    out2 = cuda.local.array((D,1),float32)
-    vecMult(gamma2,point,out)
-    vecSum(momentOne[j],out[:,0],out2)
-    
-    for i in range(D):
-        momentOne[i] = out2[i,0]
+    #out = cuda.local.array((D,1),float32)
+    #out2 = cuda.local.array((D,1),float32)
+    #vecMult(gamma2,point,out)
+    #vecSum(momentOne[j],out[:,0],out2)
 
-    point_trans = cuda.local.array((D,1),float32)
-    transpose_vec(point,point_trans)
-    #point = point.reshape(1,-1)
+    #for i in range(D):
+    cuda.atomic.add(momentOne ,(j,0), gamma2 * point[0])
+    cuda.atomic.add(momentOne ,(j,1), gamma2 * point[1])
+    cuda.atomic.add(momentOne ,(j,2), gamma2 * point[2])
+
+    pointNew = cuda.local.array((D,1),dtype = float32)
+    copyVec3x1(point,pointNew)
+    point_trans = cuda.local.array((1,D),dtype = float32)
+    transpose_mat(pointNew,point_trans)
     out3 = cuda.local.array((D,D),dtype = float32)
-    vecCheck = cuda.local.array((1,D),float32)
-    copyVecToMat(point,vecCheck)
-    matmul(point_trans,vecCheck,out3)
-    out4 = cuda.local.array((D,D),dtype = float32)
-    #elementMult(gamma,)
-    matmultConstant(gamma,out3,out4)
-    out5 = cuda.local.array((D,D),dtype = float32)
-    matAdd(momentTwo[j],out4,out5)
+    matmul(pointNew,point_trans,out3)
+
+    cuda.atomic.add(momentTwo ,(j,0,0), gamma2 * out3[0,0])
+    cuda.atomic.add(momentTwo ,(j,0,1), gamma2 * out3[0,1])
+    cuda.atomic.add(momentTwo ,(j,0,2), gamma2 * out3[0,2])
+    cuda.atomic.add(momentTwo ,(j,1,0), gamma2 * out3[1,0])
+    cuda.atomic.add(momentTwo ,(j,1,1), gamma2 * out3[1,1])
+    cuda.atomic.add(momentTwo ,(j,1,2), gamma2 * out3[1,2])
+    cuda.atomic.add(momentTwo ,(j,2,0), gamma2 * out3[2,0])
+    cuda.atomic.add(momentTwo ,(j,2,1), gamma2 * out3[2,1])
+    cuda.atomic.add(momentTwo ,(j,2,2), gamma2 * out3[2,2])
+   
+    #for i in range(D):
+    #    momentOne[i] = out2[i,0]
+
+    # point_trans = cuda.local.array((D,1),float32)
+    # transpose_vec(point,point_trans)
+    # #point = point.reshape(1,-1)
+    # out3 = cuda.local.array((D,D),dtype = float32)
+    # vecCheck = cuda.local.array((1,D),float32)
+    # copyVecToMat(point,vecCheck)
+    # matmul(point_trans,vecCheck,out3)
+    # out4 = cuda.local.array((D,D),dtype = float32)
+    # #elementMult(gamma,)
+    # matmultConstant(gamma2,out3,out4)
+    # out5 = cuda.local.array((D,D),dtype = float32)
+    # matAdd(momentTwo[j],out4,out5)
     
-    for i in range(D):
-        for j in range(D):
-            momentTwo[i,j] = out5[i,j]
+    # for i in range(D):
+    #     for j in range(D):
+    #         momentTwo[i,j] = out5[i,j]
     
 
 @cuda.reduce
 def sum_reduce(a, b):
     return a + b
 
+TPB = 100
+
 @cuda.jit
 def gmmTreeEStepKernel(data,mixingCoeff,mean,covar,momentsZero,momentsOne,momentsTwo,parentIdx,currentIdx,nTotal):
     
     idx = (cuda.blockDim.x * cuda.blockIdx.x) + cuda.threadIdx.x
-    j0= child(parentIdx[idx])
+    if (idx >= data.shape[0]):
+        return
+    j0 = child(parentIdx[idx])
     gamma = cuda.local.array((n_node,1),float32)
     sumGamma = np.float32(0.0)
+    maxj = 0
     for j in range(j0,j0+n_node):
         p = mixingCoeff[j] * gaussianPdfKernel(data[idx],mean[j],covar[j])
-        #if idx==1:
-        #    print(p)
         gamma[j-j0] = p
+        if (np.float32(p) > gamma[maxj,0]):
+            maxj = j-j0
         sumGamma = sumGamma + p
-
-    maxj = 0
+  
     if (sumGamma < eps):
         for j in range(n_node):
             gamma[j] = 0.0
-
-    #else:
-    #    maxj = normalizeKernel(gamma,n_node,sumGamma)
     
     for j in range(j0,j0+n_node):
         k = gamma[j- j0]
         accumulateDevice(momentsZero,momentsOne,momentsTwo,j,k,data[idx],sumGamma)
     currentIdx[idx] = j0 + maxj
 
+    #if idx < 10:
+    #    print(maxj)
+    #if idx==1:
+    #    for i in range(7):
+    #        print(momentsZero[i])
+
+
 
 @cuda.jit
-def gmmtreeMStepKernel(momentsZero,momentsOne,momentsTwo,mixingCoeff,mean,covar,n_points,lb,ld):
+def gmmtreeMStepKernel(momentsZero,momentsOne,momentsTwo,mixingCoeff,mean,covar,n_points,lb,le,ld):
     idx = (cuda.blockDim.x * cuda.blockIdx.x) + cuda.threadIdx.x
+    if (idx >= le - lb):
+        return
     mlEstimator(momentsZero[idx+lb],momentsOne[idx + lb],momentsTwo[idx + lb],mixingCoeff,mean,covar,idx+lb,n_points,ld)
 
 # @cuda.jit
@@ -411,98 +454,95 @@ def gmmtreeMStepKernel(momentsZero,momentsOne,momentsTwo,mixingCoeff,mean,covar,
 
 blockSize = 128        
 
-def accumulate(momentZero,momentOne,momentTwo,gamma,data):
+def accumulate(momentZero,momentOne,momentTwo,searchID,gamma,data):
   if (float(gamma) <  eps):
     return
 
-  momentZero = momentZero + gamma
+  momentZero[searchID] = momentZero[searchID] + gamma
   data = data.reshape(1,-1)
-  momentOne = momentOne + float(gamma)*data
-  momentTwo = momentTwo + float(gamma)*np.matmul(data.T,data)
+  momentOne[searchID] = momentOne[searchID] + float(gamma)*data
+  momentTwo[searchID] = momentTwo[searchID] + float(gamma)*np.matmul(data.T,data)
 
 def buildGMMTree(points,maxTreeLevel,ls,ld):
-  nTotal = int(n_node * (cp.power(n_node,maxTreeLevel) -1 )/(n_node-1))
-  np.random.seed(nTotal)
-  idxs = np.random.randint(nTotal,size = nTotal)
-  points = points.astype(np.float32)
-  #sig2 = cp.var(points)
-  #print("Variance is:",sig2/(3*n_node))  
-  #for i in range(5):
-  #    print(points[i])
-  sig2 = 0.00034
+    nTotal = int(n_node * (np.power(n_node,maxTreeLevel) -1 )/(n_node-1))
+    np.random.seed(nTotal)
+    idxs = np.random.randint(nTotal,size = nTotal)
+    points = points.astype(np.float32)
+    #sig2 = cp.var(points)
+    #print("Variance is:",sig2/(3*n_node))  
+    #for i in range(5):
+    #    print(points[i])
+    sig2 = 0.00034
 
-  mixingCoeff = np.zeros(nTotal,dtype = np.float32)
-  mean = np.zeros((nTotal,3),dtype = np.float32)
-  covar = np.zeros((nTotal,3,3),dtype = np.float32)
+    mixingCoeff = np.zeros(nTotal,dtype = np.float32)
+    mean = np.zeros((nTotal,3),dtype = np.float32)
+    covar = np.zeros((nTotal,3,3),dtype = np.float32)
 
-  momentsZero = np.zeros(nTotal,dtype = np.float32)
-  momentsOne = np.zeros((nTotal,3),dtype = np.float32)
-  momentsTwo = np.zeros((nTotal,3,3),dtype = np.float32)
-  
-  for i in range(nTotal):
-    mixingCoeff[i] = (1.0/n_node)
-    mean[i] = points[idxs[i]]
-    covar[i] = np.identity(3,dtype = np.float32) * sig2
+    momentsZero = np.zeros(nTotal,dtype = np.float32)
+    momentsOne = np.zeros((nTotal,3),dtype = np.float32)
+    momentsTwo = np.zeros((nTotal,3,3),dtype = np.float32)
+    
+    for i in range(nTotal):
+        mixingCoeff[i] = (1.0/n_node)
+        mean[i] = points[idxs[i]]
+        covar[i] = np.identity(3,dtype = np.float32) * sig2
 
-  print(type(mixingCoeff[0]))
-  parentIdx = -1*np.ones(points.shape[0],dtype = int)
-  currentIdx = np.zeros(points.shape[0],dtype = int)
-  dev_parentIdx = cuda.to_device(parentIdx)
+    print(type(mixingCoeff[0]))
+    parentIdx = -1*np.ones(points.shape[0],dtype = int)
+    currentIdx = np.zeros(points.shape[0],dtype = int)
+    dev_parentIdx = cuda.to_device(parentIdx)
+    dev_currentIdx = cuda.to_device(currentIdx)
 
-  dev_mixingCoeff = cuda.to_device(mixingCoeff)
-  dev_mean = cuda.to_device(mean)
-  dev_covar = cuda.to_device(covar)
+    dev_mixingCoeff = cuda.to_device(mixingCoeff)
+    dev_mean = cuda.to_device(mean)
+    dev_covar = cuda.to_device(covar)
 
-  dev_momentsZero = cuda.to_device(momentsZero)
-  dev_momentsOne = cuda.to_device(momentsOne)
-  dev_momentsTwo = cuda.to_device(momentsTwo)
+    dev_momentsZero = cuda.to_device(momentsZero)
+    dev_momentsOne = cuda.to_device(momentsOne)
+    dev_momentsTwo = cuda.to_device(momentsTwo)
 
-  dev_points = cuda.to_device(points)
+    dev_momentsZero_N = cuda.to_device(momentsZero.copy())
+    dev_momentsOne_N = cuda.to_device(momentsOne.copy())
+    dev_momentsTwo_N = cuda.to_device(momentsTwo.copy())
 
-  qValues = cuda.device_array(points.shape[0],dtype = np.float32)
-  fullNumBlocks1 = int((points.shape[0] + blockSize - 1)/blockSize)
-  dev_maxTreeLevel = cuda.to_device(maxTreeLevel)
-  dev_nTotal = cuda.to_device(nTotal)
+    dev_points = cuda.to_device(points)
 
-  for l in range(maxTreeLevel):
-    prevQ = 0.0
-    while (True):
-        print("Level: ",l)
-        print("The current IDx values are:")
-        print(currentIdx[0:21])
-        dev_currentIdx = cuda.to_device(currentIdx)
-        #print("The nodes values are:")
-        #for k in range(20):
-        #    print(nodes[k].mixingCoeff,end=' ')
-        gmmTreeEStepKernel[fullNumBlocks1,blockSize](dev_points,dev_mixingCoeff,dev_mean,dev_covar,dev_momentsZero,dev_momentsOne,dev_momentsTwo,dev_parentIdx,dev_currentIdx,dev_nTotal)
-        
-        momentsZero,momentsOne,momentsTwo = dev_momentsZero.copy_to_host(),dev_momentsOne.copy_to_host(),dev_momentsTwo.copy_to_host()
-        lb = level(l)
-        le = level(l+1)
-        fullNumBlocks2 = int((le -lb + blockSize - 1)/blockSize)
-        gmmtreeMStepKernel[fullNumBlocks2,blockSize](dev_momentsZero,dev_momentsOne,dev_momentsTwo,dev_mixingCoeff,dev_mean,dev_covar,np.float32(points.shape[0]),int(lb),np.float32(ld))
+    qValues = cuda.device_array(points.shape[0],dtype = np.float32)
+    fullNumBlocks1 = int((points.shape[0] + blockSize - 1)/blockSize)
+    dev_maxTreeLevel = cuda.to_device(maxTreeLevel)
+    dev_nTotal = cuda.to_device(nTotal)
 
-        mixingCoeff,mean,covar = dev_mixingCoeff.copy_to_host(),dev_mean.copy_to_host(),dev_covar.copy_to_host()
+    for l in range(maxTreeLevel):
+        prevQ = 0.0
+        while (True):
+            gmmTreeEStepKernel[fullNumBlocks1,blockSize](dev_points,dev_mixingCoeff,dev_mean,dev_covar,dev_momentsZero,dev_momentsOne,dev_momentsTwo,dev_parentIdx,dev_currentIdx,dev_nTotal)
+            cuda.synchronize()
+            lb = level(l)
+            le = level(l+1)
 
-        logLikelihoodValue[fullNumBlocks1,blockSize](dev_mixingCoeff,dev_mean,dev_covar,dev_points,int(level(l)),int(level(l+1)),qValues)
-        q = sum_reduce(qValues)
-        print("Likelihood value is: ",q)
-        print("The difference is the value is ",q - prevQ)
-        if (np.abs(q - prevQ) < ls):
-            break
-        prevQ = q
-        currentIdx = dev_currentIdx.copy_to_host()
-    dev_parentIdx = dev_currentIdx
+            fullNumBlocks2 = int((le -lb + blockSize - 1)/blockSize)
+            gmmtreeMStepKernel[fullNumBlocks2,blockSize](dev_momentsZero,dev_momentsOne,dev_momentsTwo,dev_mixingCoeff,dev_mean,dev_covar,np.float32(points.shape[0]),int(lb),int(le),np.float32(ld))
+            cuda.synchronize()
+            logLikelihoodValue[fullNumBlocks1,blockSize](dev_mixingCoeff,dev_mean,dev_covar,dev_points,int(level(l)),int(level(l+1)),qValues)
+            cuda.synchronize()
+            q = sum_reduce(qValues)
+            if (np.abs(q - prevQ) < ls):
+                break
+            prevQ = q
+            dev_momentsZero.copy_to_device(dev_momentsZero_N)
+            dev_momentsOne.copy_to_device(dev_momentsOne_N)
+            dev_momentsTwo.copy_to_device(dev_momentsTwo_N)
+
+        dev_parentIdx.copy_to_device(dev_currentIdx)
   #print("Nodes is",nodes)
-  mixingCoeff = dev_mixingCoeff.copy_to_host()
-  mean = dev_mean.copy_to_host()
-  covar = dev_covar.copy_to_host()
-  return mixingCoeff,mean,covar
+    mixingCoeff = dev_mixingCoeff.copy_to_host()
+    mean = dev_mean.copy_to_host()
+    covar = dev_covar.copy_to_host()
+    return mixingCoeff,mean,covar
   
 def gmmTreeRegESTep(points,mixingCoeff,mean,covar,maxTreeLevel,lc):
   #print("Node value is: ",nodes[0].mixingCoeff,nodes[0].mean,nodes[0].covar)
   nTotal = int(n_node * (np.power(n_node,maxTreeLevel) -1 )/(n_node-1))
-  
   momentsZero = np.zeros(nTotal,dtype = np.float32)
   momentsOne = np.zeros((nTotal,3),dtype = np.float32)
   momentsTwo = np.zeros((nTotal,3,3),dtype = np.float32)
@@ -511,7 +551,7 @@ def gmmTreeRegESTep(points,mixingCoeff,mean,covar,maxTreeLevel,lc):
     searchID = -1
     gamma = np.zeros(n_node)
     for l in range(maxTreeLevel):
-      j0 = int(child(searchID))
+      j0 = int(child2(searchID))
       for j in range(j0,j0+n_node):
         gamma[j - j0] = mixingCoeff[j] * gaussianPdf(points[i],mean[j],covar[j])
       den = np.sum(gamma)
@@ -525,12 +565,13 @@ def gmmTreeRegESTep(points,mixingCoeff,mean,covar,maxTreeLevel,lc):
       if (complexity(covar[searchID]) <= lc):
         break
       k = gamma[searchID- j0]
-      accumulate(momentsZero[searchID],momentsOne[searchID],momentsTwo[searchID],k,points[i])
+      accumulate(momentsZero,momentsOne,momentsTwo,searchID,k,points[i])
 
   return momentsZero,momentsOne,momentsTwo
 
 import abc
 import six
+import time
 
 @six.add_metaclass(abc.ABCMeta)
 class Transformation():
@@ -633,15 +674,22 @@ class GMMTree():
         self._tf_result = self._tf_type()
         self._callbacks = []
         if not self._source is None:
+            t1 = time.time()
             self._mixingCoeff,self._mean,self._covar = buildGMMTree(self._source,
                                                  self._tree_level,
-                                                 80, 1.0e-4)
+                                                 20, 1.0e-4)
+            t2 = time.time()
+            print("Build tree Time: ",t2-t1)
 
     def set_source(self, source):
         self._source = source
+        t1 = time.time()
         self._mixingCoeff,self._mean,self._covar = buildGMMTree(self._source,
                                                  self._tree_level,
-                                                 80, 1.0e-4)
+                                                 20, 1.0e-4)
+        t2 = time.time()
+        print("Build tree Time: ",t2-t1)
+
     def set_callbacks(self, callbacks):
         self._callbacks = callbacks
 
@@ -657,6 +705,7 @@ class GMMTree():
         momentsOne = estep_res.momentOne
         momentsTwo = estep_res.momentTwo
         n = len(self._mixingCoeff)
+        #print("length of moments are: ",n)
         #print("The length of moments are: ",n)
         #print("The moment is:",moments[0].zero,moments[0].one,moments[0].two)
         amat = np.zeros((n * 3, 6))
@@ -666,13 +715,14 @@ class GMMTree():
                 continue
             lmd, nn = np.linalg.eigh(self._covar[i])
             s = momentsOne[i] / momentsZero[i]
-            nn = np.multiply(nn, np.sqrt(m.zero / lmd))
+            nn = np.multiply(nn, np.sqrt(momentsZero[i] / lmd))
             sl = slice(3 * i, 3 * (i + 1))
-            bmat[sl] = (np.dot(nn.T, self._nodes[i].mean.T) - np.dot(nn.T, s.T)).T
+            bmat[sl] = (np.dot(nn.T, self._mean[i].T) - np.dot(nn.T, s.T)).T
             amat[sl, :3] = np.cross(s, nn.T)
             amat[sl, 3:] = nn.T
         x, q, _, _ = np.linalg.lstsq(amat, bmat, rcond=-1)
         rot, t = twist_mul(x, trans_p.rot, trans_p.t)
+
         return MstepResult(RigidTransformation(rot, t), q)
 
     def registration(self, target, maxiter=20, tol=1.0e-4):
