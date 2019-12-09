@@ -243,7 +243,8 @@ We also evaluate the FPS on Waymo's LIDAR data and compare CPU vs GPU.
 9.	Lounge Dataset
 
 ### How to run the Code
-1. For running the GMM modelling on Waymo Dataset, run the command ```python ./src/python/gmm_waymo/run_gmm_waymo_gpu.py ```
+1. For running the GMM modelling on Waymo Dataset, run the command 
+```python ./src/python/gmm_waymo/run_gmm_waymo_gpu.py ```
 2. For running the GMM PCR on various Bunny, Lounge and Dragon Datasets, look at the file ```/src/python/python/gmm_waymo/run_gmm_static.py ```
 3. For running HMGMM PCR, run the command ```python src/python/hgmm/hgmm_gpu.py ```
 
