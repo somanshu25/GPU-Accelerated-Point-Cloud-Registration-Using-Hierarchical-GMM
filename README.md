@@ -209,8 +209,11 @@ The above visual is using a CPU implementation. Unfortunately, due to logistics 
 
 ## Performance Analysis
 
+### Evaluation of GMM (CPU and GPU) vs HGMM
 
-We compare the CPU and GPU implemenations of GMM trained on 3D point clouds. There are two variations to consider,
+We compare the CPU and GPU implemenations of GMM and HGMM (Level 2 with 72 components) trained on 3D point clouds. GMM CPU and GPU were trained for fixed number of iterations and HGMM was trained till convergence.
+
+There are two variations to consider,
 
 1) Performance by varying total number of points
 2) Performance by varying total number of components
@@ -219,6 +222,23 @@ No. of Points with Time             |  No. of Components with Time
 :-------------------------:|:-------------------------:
 ![](img_gmmreg/gmm_perf1.png)| 		![](img_gmmreg/gmm_perf2.png)
 
+From the graph, it's clear that HGMM is the winner. We also observe the performance of HGMM by varying the number of levels of the GMM Tree.
+
+<p align="center">
+<img src = "img_gmmreg/hgmm_perf_lvls.png" width="500">
+ </p>
+
+
+Note that as we increase the depth of the GMM tree, the total number of Gaussian components increase as follows,
+
+| Tree Level|  Number of Components |
+| --- | --- |
+| 2 | 72 |
+| 3 | 544 |
+| 4 | 4680 |
+| 5 | 37448 |
+
+### Evaluation GMM (CPU and GPU) on Waymo LIDAR 
 
 We also evaluate the FPS on Waymo's LIDAR data and compare CPU vs GPU.
 

@@ -16,8 +16,8 @@ from scipy.stats import multivariate_normal
 from sklearn.datasets import make_spd_matrix
 plt.rcParams["axes.grid"] = False
 import os
-os.environ['NUMBAPRO_LIBDEVICE'] = "/usr/local/cuda-10.0/nvvm/libdevice"
-os.environ['NUMBAPRO_NVVM'] = "/usr/local/cuda-10.0/nvvm/lib64/libnvvm.so"
+#os.environ['NUMBAPRO_LIBDEVICE'] = "/usr/local/cuda-10.0/nvvm/libdevice"
+#os.environ['NUMBAPRO_NVVM'] = "/usr/local/cuda-10.0/nvvm/lib64/libnvvm.so"
 from numba import cuda
 from numba.types import float32
 import math
@@ -465,14 +465,16 @@ def accumulate(momentZero,momentOne,momentTwo,searchID,gamma,data):
 
 def buildGMMTree(points,maxTreeLevel,ls,ld):
     nTotal = int(n_node * (np.power(n_node,maxTreeLevel) -1 )/(n_node-1))
-    np.random.seed(nTotal)
+    print("total components:", nTotal)
+    np.random.seed(72)
     idxs = np.random.randint(nTotal,size = nTotal)
     points = points.astype(np.float32)
     #sig2 = cp.var(points)
     #print("Variance is:",sig2/(3*n_node))  
     #for i in range(5):
     #    print(points[i])
-    sig2 = 0.00034
+    #sig2 = 0.00034
+    sig2 = 0.004
 
     mixingCoeff = np.zeros(nTotal,dtype = np.float32)
     mean = np.zeros((nTotal,3),dtype = np.float32)
@@ -512,19 +514,21 @@ def buildGMMTree(points,maxTreeLevel,ls,ld):
     dev_maxTreeLevel = cuda.to_device(maxTreeLevel)
     dev_nTotal = cuda.to_device(nTotal)
 
+    print("start")
+    t1 = time.time()
     for l in range(maxTreeLevel):
         prevQ = 0.0
         while (True):
             gmmTreeEStepKernel[fullNumBlocks1,blockSize](dev_points,dev_mixingCoeff,dev_mean,dev_covar,dev_momentsZero,dev_momentsOne,dev_momentsTwo,dev_parentIdx,dev_currentIdx,dev_nTotal)
-            cuda.synchronize()
+            #cuda.synchronize()
             lb = level(l)
             le = level(l+1)
 
             fullNumBlocks2 = int((le -lb + blockSize - 1)/blockSize)
             gmmtreeMStepKernel[fullNumBlocks2,blockSize](dev_momentsZero,dev_momentsOne,dev_momentsTwo,dev_mixingCoeff,dev_mean,dev_covar,np.float32(points.shape[0]),int(lb),int(le),np.float32(ld))
-            cuda.synchronize()
+            #cuda.synchronize()
             logLikelihoodValue[fullNumBlocks1,blockSize](dev_mixingCoeff,dev_mean,dev_covar,dev_points,int(level(l)),int(level(l+1)),qValues)
-            cuda.synchronize()
+            #cuda.synchronize()
             q = sum_reduce(qValues)
             if (np.abs(q - prevQ) < ls):
                 break
@@ -534,7 +538,10 @@ def buildGMMTree(points,maxTreeLevel,ls,ld):
             dev_momentsTwo.copy_to_device(dev_momentsTwo_N)
 
         dev_parentIdx.copy_to_device(dev_currentIdx)
-  #print("Nodes is",nodes)
+    t2 = time.time()
+
+    print('Time: ', t2-t1)
+    #print("Nodes is",nodes)
     mixingCoeff = dev_mixingCoeff.copy_to_host()
     mean = dev_mean.copy_to_host()
     covar = dev_covar.copy_to_host()
@@ -666,7 +673,7 @@ class GMMTree():
         tree_level (int, optional): Maximum depth level of GMM tree.
         lambda_c (float, optional): Parameter that determine the pruning of GMM tree
     """
-    def __init__(self, source=None, tree_level=2, lambda_c=0.01):
+    def __init__(self, source=None, tree_level=5, lambda_c=0.01):
         self._source = source
         self._tree_level = tree_level
         self._lambda_c = lambda_c
@@ -679,7 +686,25 @@ class GMMTree():
                                                  self._tree_level,
                                                  20, 1.0e-4)
             t2 = time.time()
+
             print("Build tree Time: ",t2-t1)
+
+            t1 = time.time()
+            self._mixingCoeff,self._mean,self._covar = buildGMMTree(self._source,
+                                        self._tree_level,
+                                        20, 1.0e-4)
+            t2 = time.time()                         
+            
+            print("Build tree Time: ",t2-t1)
+
+            t1 = time.time()
+            self._mixingCoeff,self._mean,self._covar = buildGMMTree(self._source,
+                                        self._tree_level,
+                                        20, 1.0e-4)
+            t2 = time.time()                         
+            
+            print("Build tree Time: ",t2-t1)            
+            
 
     def set_source(self, source):
         self._source = source
@@ -687,6 +712,7 @@ class GMMTree():
         self._mixingCoeff,self._mean,self._covar = buildGMMTree(self._source,
                                                  self._tree_level,
                                                  20, 1.0e-4)
+                                                  
         t2 = time.time()
         print("Build tree Time: ",t2-t1)
 
@@ -782,7 +808,16 @@ def registration_gmmtree(source, target, maxiter=20, tol=1.0e-4,
 
 import copy
 # load source and target point cloud
-source =  o3.read_point_cloud('bunny.pcd')
+
+#voxel = 2.5
+
+#voxel = 0.22
+#voxel = 0.07
+voxel = 0.032
+#voxel = 0.0225
+#voxel = 0.014
+
+source =  o3.read_point_cloud('lounge.ply')
 target = copy.deepcopy(source)
 # transform target point cloud
 th = np.deg2rad(30.0)
@@ -791,8 +826,8 @@ target.transform(np.array([[np.cos(th), -np.sin(th), 0.0, 0.0],
                            [np.sin(th), np.cos(th), 0.0, 0.0],
                            [0.0, 0.0, 1.0, 0.0],
                            [0.0, 0.0, 0.0, 1.0]]))
-source = o3.voxel_down_sample(source, voxel_size=0.005)
-target = o3.voxel_down_sample(target, voxel_size=0.005)
+source = o3.voxel_down_sample(source, voxel_size=voxel)
+target = o3.voxel_down_sample(target, voxel_size=voxel)
 #sCheck = np.asarray(source.points)
 #tCheck = np.asarray(target.points)
 #print("Source points are:")
