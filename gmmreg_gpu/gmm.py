@@ -156,7 +156,7 @@ class OneClassSVM(Feature):
         self._delta = delta
 
     def init(self):
-        self._clf = thundersvm.OneClassSVM(nu=self._nu, kernel="rbf", gamma=self._gamma)
+        self._clf = svm.OneClassSVM(nu=self._nu, kernel="rbf", gamma=self._gamma)
 
     def compute(self, data):
         self._clf.fit(data)

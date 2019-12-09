@@ -71,18 +71,29 @@ class L2DistRegistration(object):
 		mu_target, phi_target = self._feature_gen.compute(target)
 		end_gmm_1 = time.time()
 
-		pcd.points = o3.utility.Vector3dVector(mu_target)
-		pcd.paint_uniform_color([1,1,0])
+		mu_target = mu_target
+		phi_target = phi_target * 1e3
+
+		# pcd.points = o3.utility.Vector3dVector(mu_target)
+		# pcd.paint_uniform_color([0,1,0])
+
+		#print(phi_target)
 
 		for _ in range(maxiter):
 			start_gmm_2 = time.time()
 			mu_source, phi_source = self._feature_gen.compute(self._source)
-			pcd2.points = o3.utility.Vector3dVector(mu_source)
-			pcd2.paint_uniform_color([0,0,1])
 			end_gmm_2 = time.time()
+
+			mu_source = mu_source
+			phi_source = phi_source * 1e3
+
+			#print(phi_source)
+
+			# pcd2.points = o3.utility.Vector3dVector(mu_source)
+			# pcd2.paint_uniform_color([1,0,0])
 			
-			print(mu_source.shape)
-			print("Initial: ", x_ini)
+			#print(mu_source.shape)
+			#print("Initial: ", x_ini)
 
 			args = (mu_source, phi_source,
 					mu_target, phi_target, self._sigma)
@@ -99,7 +110,6 @@ class L2DistRegistration(object):
 			self._annealing()
 			self._feature_gen.annealing()
 			if not f is None and abs(res.fun - f) < tol:
-				print("Check:", f)
 				break
 			f = res.fun
 			x_ini = res.x
@@ -126,12 +136,12 @@ class RigidSVR(L2DistRegistration):
         self._feature_gen._gamma = 1.0 / (2.0 * np.square(self._sigma))
 
 class RigidGMMReg(L2DistRegistration):
-	def __init__(self, source, sigma=5.0, delta=0.9,
+	def __init__(self, source, sigma=1.0, delta=0.9,
 				 n_gmm_components=50, use_estimated_sigma=True):
 		print(source.shape)
 		n_gmm_components = min(n_gmm_components, int(source.shape[0] * 0.8))
 		print("Number of components: ", n_gmm_components)
-		super(RigidGMMReg, self).__init__(source, ft.GMM_Sklearn(n_gmm_components, max_iter=100),
+		super(RigidGMMReg, self).__init__(source, ft.GMM_GPU(n_gmm_components, max_iter=10),
 										  cf.RigidCostFunction(),
 										  sigma, delta,
 										  use_estimated_sigma)
@@ -181,15 +191,15 @@ if __name__ == "__main__":
 	#from probreg import transformation
 
 	source = o3.read_point_cloud('waymo1.pcd')
-	target = o3.read_point_cloud("waymo50.pcd")
+	#target = o3.read_point_cloud("waymo5.pcd")
 	#source = o3.read_point_cloud('bunny.pcd')
-	# target = copy.deepcopy(source)
-	# # transform target point cloud
-	# th = np.deg2rad(10.0)
-	# target.transform(np.array([[np.cos(th), -np.sin(th), 0.0, 0.0],
-	# 						[np.sin(th), np.cos(th), 0.0, 0.0],
-	# 						[0.0, 0.0, 1.0, 0.0],
-	# 						[0.0, 0.0, 0.0, 1.0]]))
+	target = copy.deepcopy(source)
+	# transform target point cloud
+	th = np.deg2rad(30.0)
+	target.transform(np.array([[np.cos(th), -np.sin(th), 0.0, 0.0],
+							[np.sin(th), np.cos(th), 0.0, 0.0],
+							[0.0, 0.0, 1.0, 0.0],
+							[0.0, 0.0, 0.0, 1.0]]))
 	source = o3.voxel_down_sample(source, voxel_size=0.6)
 	target = o3.voxel_down_sample(target, voxel_size=0.6)
 
@@ -199,8 +209,8 @@ if __name__ == "__main__":
 	# compute cpd registration
 	#tf_param, _ = gmmtree.registration_gmmtree(source, target)
 
-	tf_param = registration_svr(source, target, callbacks=[])
-	#tf_param = registration_gmmreg(source, target, callbacks=[])
+	#tf_param = registration_svr(source, target, callbacks=[])
+	tf_param = registration_gmmreg(source, target, callbacks=[])
 
 	rot = trans.identity_matrix()
 	rot[:3, :3] = tf_param.rot

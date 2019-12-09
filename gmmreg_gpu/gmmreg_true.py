@@ -24,9 +24,9 @@ target.transform(np.array([[np.cos(th), -np.sin(th), 0.0, 0.0],
 #tf_param, _, _ = cpd.registration_cpd(source, target)
 objective_type = 'pt2pt'
 #tf_param, _, _ = filterreg.registration_filterreg(source, target,objective_type=objective_type,sigma2=None)
-#tf_param = l2dist_regs.registration_svr(source, target)
+tf_param = l2dist_regs.registration_svr(source, target)
 #tf_param, _ = gmmtree.registration_gmmtree(source, target)
-tf_param = l2dist_regs.registration_gmmreg(source, target, n_gmm_components=50, use_estimated_sigma=False)
+#tf_param = l2dist_regs.registration_gmmreg(source, target, n_gmm_components=50, use_estimated_sigma=False)
 
 rot = trans.identity_matrix()
 rot[:3, :3] = tf_param.rot
