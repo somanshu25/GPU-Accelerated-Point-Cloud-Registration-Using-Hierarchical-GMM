@@ -69,7 +69,20 @@ On the Dragon,
 :-------------------------:|:-------------------------:
 ![](img_gmmreg/dragon10.png)| 		![](img_gmmreg/dragon50.png)
 
+### Hierarchical Gaussian Mixure Models
 
+The issue with conventional GMM modelling is bottleneck due to linear search over all the components fitting onto the dataset. The GMM modelling requires unnecessary computation for the likelihood of a point to a cluster which is very far from it again and again, which results in reduced efficiency. One of the solutions to prevent search over all the clusters is to implement Hierarchical gaussian Mixture Model tree so as to get benefits of octree structure. While designing the Gaussians in form of trees, it gives us additional benefit of adaptive scaling, hence we can choose some points to be fitted with very small variant Gaussians while some points can be clustered with large variance at same time. The algorithm is GPU-Accelerated construction algorithm which is reliable and parallelizable for maximum benefit from the GPU’s. As mentioned in the reference, the complexity of the algorithms is measured in terms of Associative Complexity, which is complexity of data association problem over all N points (E Step in the case of EM based methods); and Optimization Complexity which is the size of the optimization problem (M Step in the case of EM-based methods). 
+
+<p align= "center">
+<img src="img_gmmreg/image_HGMM.png" width = 600 height = 400>
+ <p/>
+
+For N points and J clusters, the complexities of HMM registration and HGMM registration methods are given below:
+EM-ICP: Associative complexity: O(N log N); optimization Complexity: O(N<sup>2</sup>)
+GMM Reg: Associative Complexity: O(N) ; Optimization Complexity: O(N<sup>2</sup>)
+HGMM Reg: Associative Complexity: O(N log J ) ; Optimization Complexity: O(log J)
+
+In our implementation, we have chosen the number of nodes per parent as 8, which implies that each node can be defined as the weighted sum of 8 child Gaussians. Once a point is assigned to a parent node cluster by EM algorithm, the point will later check the likelihood with the child of the associated parent only, hence, the search keeps reducing In exponential order for the points, which leads to high efficiency.
 
 ## ICP Misalignment
 
@@ -121,15 +134,11 @@ Also, CuPy enables inter-operability with Numba CUDA Device Arrays. So we can se
 In the case of supervised image segmentation, the architectures in general assigns labels to pixels that denote the cluster to which the pixel belongs. In the unsupervised scenario, however, no training images or ground truth labels of pixels are given beforehand. Therefore, once when a target image is input, we jointly labels together with feature representations while minimizing the cost function using optimization. In our case, clustering can be used as a way to segment the features which are alike in the same gaussian. More the number of compoennts, more finer the groups will become. We will use our GPU implementation to speedup the clustering and segment the image faster. The reference for the unsupervised image segmentation can be seen [here](https://kanezaki.github.io/pytorch-unsupervised-segmentation/).
 
 
-On the Lounge, for 10 and 50 components,
+On the Lounge,
 
-<p align="center">
-<img src = "img_gmmreg/lounge10.png" width=800>
- </p>
-
-<p align="center">
-<img src = "img_gmmreg/lounge50.png" width=800>
- </p>
+10 Components             |  50 Components
+:-------------------------:|:-------------------------:
+![](img_gmmreg/lounge10.png)| 		![](img_gmmreg/lounge50.png)
 
 On the left image, we can see how different objects in the scene are neatly grouped together. This can serve as a starting point for semantic segmentation.
 
@@ -211,6 +220,17 @@ We also evaluate the FPS on Waymo's LIDAR data and compare CPU vs GPU.
  
  1) For 10k points, while we can achieve close to 10 FPS, we are bottlenecked by Open3D visualizer rendering via the CPU.
  2) For larger point clouds (> 50k points), the GPU to CPU data transfer is no longer the bottleneck. Our GMM implementation itself is not fast enough.
+
+Requirements for Code:
+1.	Python 3.5 or above
+2.	Numba  0.43.1
+3.	CuPy 7.0.0
+4.	Intel Open 3D
+5.	Scikit-learn
+6.	Probreg 0.1.7
+7.	Waymo Open Dataset
+8.	Stanford Bunny Dataset
+9.	Lounge Dataset
 
 ## References
 1. [Point Clouds Registration with Probabilistic Data Association](https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=7759602&tag=1)
