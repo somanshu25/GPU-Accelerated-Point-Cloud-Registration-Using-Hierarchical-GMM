@@ -353,7 +353,7 @@ def sum_reduce(a, b):
 def gmmTreeEStepKernel(data,mixingCoeff,mean,covar,momentsZero,momentsOne,momentsTwo,parentIdx,currentIdx,nTotal):
     
     idx = (cuda.blockDim.x * cuda.blockIdx.x) + cuda.threadIdx.x
-    j0= parentIdx[idx]
+    j0= child(parentIdx[idx])
     gamma = cuda.local.array((n_node,1),float32)
     sumGamma = np.float32(0.0)
     for j in range(j0,j0+n_node):
