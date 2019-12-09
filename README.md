@@ -49,7 +49,7 @@ Iterative Closest point (ICP) algorithm is point to poitn approach where we try 
 <img src = "img_gmmreg/image_icp_limitation.png" width="600">
  </p>
 
-Probablistic ways tend to work better in case of computer vision applications which we have studies in our project work.
+Probabilistic ways tend to work better in case of computer vision applications which we have studies in our project work.
 
 ## Algorithms 
 
@@ -61,7 +61,7 @@ In our project, we have looked at various algorithms to perform Gaussian Mixure 
 ![](https://github.com/somanshu25/CIS565_Final_Project/blob/master/img_gmmreg/GMM_waymo.gif)
 
 ### Localization
-![](https://github.com/somanshu25/CIS565_Final_Project/blob/master/img_gmmreg/img_gmmreg/localization_1.gif)
+![](https://github.com/somanshu25/CIS565_Final_Project/blob/master/img_gmmreg/localization_1.gif)
 
 ## Performance Analysis
 
