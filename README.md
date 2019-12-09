@@ -117,11 +117,15 @@ Also, CuPy enables inter-operability with Numba CUDA Device Arrays. So we can se
 In the case of supervised image segmentation, the architectures in general assigns labels to pixels that denote the cluster to which the pixel belongs. In the unsupervised scenario, however, no training images or ground truth labels of pixels are given beforehand. Therefore, once when a target image is input, we jointly labels together with feature representations while minimizing the cost function using optimization. In our case, clustering can be used as a way to segment the features which are alike in the same gaussian. More the number of compoennts, more finer the groups will become. We will use our GPU implementation to speedup the clustering and segment the image faster. The reference for the unsupervised image segmentation can be seen [here](https://kanezaki.github.io/pytorch-unsupervised-segmentation/).
 
 
-On the Lounge,
+On the Lounge, for 10 and 50 components,
 
-10 Components             |  50 Components
-:-------------------------:|:-------------------------:
-![](img_gmmreg/lounge10.png)| 		![](img_gmmreg/lounge50.png)
+<p align="center">
+<img src = "img_gmmreg/lounge10.png" width=800>
+ </p>
+
+<p align="center">
+<img src = "img_gmmreg/lounge50.png" width=800>
+ </p>
 
 On the left image, we can see how different objects in the scene are neatly grouped together. This can serve as a starting point for semantic segmentation.
 
