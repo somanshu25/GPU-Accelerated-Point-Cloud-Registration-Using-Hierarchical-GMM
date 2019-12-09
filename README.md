@@ -54,6 +54,9 @@ Probabilistic ways tend to work better in case of computer vision applications w
 ## Algorithms and implementation Details 
 
 In our project, we have looked at various algorithms to perform Gaussian Mixure Models. We have looked at the standard Gaussian mixure model algorithm with full, disagonal and spherical covariances updates. Our implementation includes the usage of Numba and CuPy kernels in Python to compare the performance of CPU and GPU implementations. We also implemented EM algorithm in C++ version before shifting to Python version because of the issues we were facing to integrate Open3D visualizer due to limited resources. 
+
+One of the implwmwntations that we have worked on is on Hierarchical Gaussiam mixure Models (HGMM's). In normal Gaussian mixure model, the search is over the linear time, while in HGMM models, the search is over the logarithmic time while doing the point cloud registration. In thsi alogrithm, we create the mixure models in the form of tree structure where the parent node is made up of GMM of it's child node. In our implementation, we have taken the value of the number of child node for the parent as 8. Thus, each node except the leaf child will have the comibation of 8 componnets, but as we go down the hierarchy, the micixing coefficients of the oarent will get multiplied to the child's mixing coefficient, making the child compoennts to fit more into the dataset.  
+
 ## Use cases
 
 ### Unsupervised Segmentation
@@ -67,20 +70,24 @@ With CPU Implementation            |  With GPU Implementation
 
 ### Localization
 
-The self-localization of mobile robots in the environment is one of the most fundamental problems in the robotics navigation field. Aligning the frames from the data received through the sensors (LIDAR point cloud data) can help us to locate and trace the path of the robot. The rotation and translational paramenters required for the robot to stay in the path could be dteremined from the parameters recieved through the point cloud registration. The follwing implementation could be fasteted using the GPU implementations.
+The self-localization of mobile robots in the environment is one of the most fundamental problems in the robotics navigation field. Aligning the frames from the data received through the sensors (LIDAR point cloud data) can help us to locate and trace the path of the robot. The rotation and translational paramenters required for the robot to stay in the path could be dteremined from the parameters recieved through the point cloud registration. The follwing implementation could be fastened using the GPU implementations.
 
-With CPU Implementation            |  With GPU Implementation
-:-------------------------:|:-------------------------:
-![](img_gmmreg/localization_1.gif))|  ![]()
+![](img_gmmreg/localization_1.gif))
 
 ## Performance Analysis
 
-The plot of log Likelihood value as the function of number of iterations is given below. (The code was run on C++ implementation of EM algorithm). 
+The plot of log Likelihood value as the function of number of iterations is given below. (The code was run on C++ implementation of EM algorithm). The algorithm 
 
 
 With 100 Components            |  With 500 Components
 :-------------------------:|:-------------------------:
 ![](img_gmmreg/image_em_algo.png))|  ![](img_gmmreg/image_em_algo_500%20compo.jpg)
+
+Some of the alignments done using the Gaussian Mixure models probabilistic models with the noisy pixels in the target (source is red and target is green color):
+
+Bunny Dataset            |  Dragon Dataset
+:-------------------------:|:-------------------------:
+![](img_gmmreg/bunny.gif)|  ![](img_gmmreg/dragon.gif)
 
 The performance analysis of CPU and GPU implmentations are shown below:
 
@@ -94,4 +101,4 @@ The above graphs mention that GPU performance improves with respect to our CPU i
 1. [Fast and Accurate Point Cloud Registration
 using Trees of Gaussian Mixtures](https://arxiv.org/pdf/1807.02587.pdf)
 1. [Accelerated Generative Models for 3D Point Cloud Data](https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=7780962)
-1. 
+
