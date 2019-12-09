@@ -75,13 +75,14 @@ The issue with conventional GMM modelling is bottleneck due to linear search ove
  <p/>
 
 Source Link: [GPU-Accelerated-3d-Point-Cloud-Processing-with-Hierarchical-Gaussian-Mixtures](https://developer.download.nvidia.com/video/gputechconf/gtc/2019/presentation/s9623-gpu-accelerated-3d-point-cloud-processing-with-hierarchical-gaussian-mixtures.pdf)
+
 For N points and J clusters, the complexities of HMM registration and HGMM registration methods are given below:
 
-| Algorithm| Associative Complexity | Optimization Complexity  |
-| --- | --- |---|
-| EM-ICP | O(N log N) | O(N<sup>2</sup>) |
-| GMM-Reg | O(N) | O(N<sup>2</sup>) |
-| HGMM-Reg | O(N log J ) | O(log J) |
+| Algorithm| Associative Complexity | Optimization Complexity  | Contruction Complexity |
+| --- | --- |---|---|
+| EM-ICP | O(N log N) | O(N<sup>2</sup>) |--- |
+| GMM-Reg | O(N) | O(N<sup>2</sup>) |O(NJ)|
+| HGMM-Reg | O(N log J ) | O(log J) |O(N log J)|
 
 
 In our implementation, we have chosen the number of nodes per parent as 8, which implies that each node can be defined as the weighted sum of 8 child Gaussians. Once a point is assigned to a parent node cluster by EM algorithm, the point will later check the likelihood with the child of the associated parent only, hence, the search keeps reducing In exponential order for the points, which leads to high efficiency.
