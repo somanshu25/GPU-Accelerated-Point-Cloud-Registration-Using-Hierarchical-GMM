@@ -63,16 +63,17 @@ One of the implwmwntations that we have worked on is on Hierarchical Gaussiam mi
 
 In the case of supervised image segmentation, the architectures in general assigns labels to pixels that denote the cluster to which the pixel belongs. In the unsupervised scenario, however, no training images or ground truth labels of pixels are given beforehand. Therefore, once when a target image is input, we jointly labels together with feature representations while minimizing the cost function using optimization. In our case, clustering can be used as a way to segment the features which are alike in the same gaussian. More the number of compoennts, more finer the groups will become. We will use our GPU implementation to speedup the clustering and segment the image faster. The reference for the unsupervised image segmentation can be seen [here](https://kanezaki.github.io/pytorch-unsupervised-segmentation/).
 
-With CPU Implementation            |  With GPU Implementation
-:-------------------------:|:-------------------------:
-![](img_gmmreg/GMM_waymo.gif))|  ![]()
+<p align="center">
+<img src = "img_gmmreg/image_icp_limitation.png" width="600">
+ </p>
 
 
 ### Localization
 
-The self-localization of mobile robots in the environment is one of the most fundamental problems in the robotics navigation field. Aligning the frames from the data received through the sensors (LIDAR point cloud data) can help us to locate and trace the path of the robot. The rotation and translational paramenters required for the robot to stay in the path could be dteremined from the parameters recieved through the point cloud registration. The follwing implementation could be fastened using the GPU implementations.
+The self-localization of mobile robots in the environment is one of the most fundamental problems in the robotics navigation field. Aligning the frames from the data received through the sensors (LIDAR point cloud data) can help us to locate and trace the path of the robot. The rotation and translational paramenters required for the robot to stay in the path could be dteremined from the parameters recieved through the point cloud registration. The following implementation could be fastened using the GPU implementations.
 
 ![](img_gmmreg/localization_1.gif))
+![](img_gmmreg/localization_2.gif))
 
 ## Performance Analysis
 
