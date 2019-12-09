@@ -72,8 +72,13 @@ In the case of supervised image segmentation, the architectures in general assig
 
 The self-localization of mobile robots in the environment is one of the most fundamental problems in the robotics navigation field. Aligning the frames from the data received through the sensors (LIDAR point cloud data) can help us to locate and trace the path of the robot. The rotation and translational paramenters required for the robot to stay in the path could be dteremined from the parameters recieved through the point cloud registration. The following implementation could be fastened using the GPU implementations.
 
-![](img_gmmreg/localization_1.gif))
-![](img_gmmreg/localization_2.gif))
+<p align="center">
+<img src = "img_gmmreg/localization_1.gif" width="400">
+ </p>
+
+<p align="center">
+<img src = "img_gmmreg/localization_2.gif" width="400">
+ </p>
 
 ## Performance Analysis
 
