@@ -5,10 +5,10 @@
 * DHRUV KARTHIK [LinkedIn](https://www.linkedin.com/in/dhruvkarthik/)
 
 <p align= "center">
-<img src="https://github.com/somanshu25/CIS565_Final_Project/blob/master/img_gmmreg/GMM_waymo.gif" width = 400 height =300>
+<img src="https://github.com/somanshu25/CIS565_Final_Project/blob/master/img_gmmreg/GMM_waymo.gif" width = 600 height = 400>
  <p/>
 
-# Table of Contents
+## Table of Contents
 
 1. [Introduction](#Introduction)
 2. [Gaussian Mixure Models](#Gaussian-Mixure-Models)
@@ -19,21 +19,21 @@
 7. [Future Work](#Future-Work)
 8. [References](#References)
 
-# Introduction
+## Introduction
 
 Point cloud registration is greatly used in the field of computer vision applications such as localization technically, to merge maps produced by different sensors. Using detereministic approached such as Iterative Closest point (ICP) works well for some of the cases, but it suffers the issue of coverging to local minima and not aligning the poinclouds properly, especially in case where a dense point cloud data has to be aligned to the saprse one. One of the ways to improve this limitation is to use probablistic models and learn distributions on the point cloud data and align the distributions itself. Hence, each point in the source point cloud is associated with a set of points in the target point cloud; each association is then weighted so that the weights form a probability distribution. We are using Gaussian Mixure Model which is driven by expectation maximization algorihtm to learn the distributions on the point cloud data and align them. We will be comparing the CPU and GPU implementation and showcase some of the applications such as unsupervised segmentation and localization. Later on, we will demonstrate a faster approach of GMM model, using Hierarchical Gaussian Mixure Model to learn the distirbutions in logarithmic time. 
 
-# Gaussian Mixure Models
+## Gaussian Mixure Models
 
 Gaussian Mixure Model (GMM) is the unsupervised probabilistic modelling technique for representing normally distributed subpopulations within an overall population. This is unsupervised as we do not have information about the subpopulations. We estimate the information about subpopulations using Expectation-maximization algorithms. We can apply GMM modelling to both 2D and 3D points to represent the clustering points in the space. The 2D and 3D representations are shown in the figures below.
 
-## Gaussian Mixure Models for 2D Dataset:
+### Gaussian Mixure Models for 2D Dataset:
 
 Before Clustering            |  After Clustering
 :-------------------------:|:-------------------------:
 ![](img_gmmreg/gmm_before_clustering.png)|  ![](img_gmmreg/gmm_2d.png)
 
-## Gaussian Mixure Modelling for 3D Dataset
+### Gaussian Mixure Modelling for 3D Dataset
 
 The Gaussian Mixure Models are implemented on Stanford Bunny for visualizing GMM in 3D point cloud data. The below two gifs show for 100 and 800 components respectively.
 
@@ -54,6 +54,14 @@ Probablistic ways tend to work better in case of computer vision applications wh
 ## Algorithms 
 
 In our project, we have looked at various algorithms to perform Gaussian Mixure Models. We have looked at the standard Gaussian mixure model algorithm with full, disagonal and spherical covariances updates. 
+
+## Use cases
+
+### Unsupervised Segmentation
+![](https://github.com/somanshu25/CIS565_Final_Project/blob/master/img_gmmreg/GMM_waymo.gif)
+
+### Localization
+![](https://github.com/somanshu25/CIS565_Final_Project/blob/master/img_gmmreg/img_gmmreg/localization_1.gif)
 
 ## Performance Analysis
 
